@@ -1,0 +1,25 @@
+{
+	"author": {
+		"name": ""
+	},
+	"description": "Electron-TS-Template",
+	"devDependencies": {
+		"@types/node": "^8.0.14",
+		"electron": "^9.0.0",
+		"typescript": "^3.2.2"
+	},
+	"electronCompile": false,
+	"main": "app.js",
+	"name": "electron-ts-template",
+	"scripts": {
+		"build": "tsc --build",
+		"clean": "tsc --build --clean",
+		"start": "tsc --build && electron ."
+	},
+	"version": "0.0.1",
+	"dependencies": {
+		"flat-ui": "^2.1.1",
+		"music-metadata": "^6.4.0",
+		"python-shell": "^2.0.1"
+	}
+}

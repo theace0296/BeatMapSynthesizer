@@ -1,0 +1,3 @@
+C:\Users\chase.CRR-MSI-X99\source\repos\Electron-TS-Template\Electron-TS-Template\obj\Debug\Electron-TS-Template.njsprojAssemblyReference.cache
+C:\Users\chase.CRR-MSI-X99\source\repos\Electron-TS-Template\Electron-TS-Template\obj\Debug\Electron-TS-Template.njsproj.CoreCompileInputs.cache
+C:\Users\chase.CRR-MSI-X99\source\repos\Electron-TS-Template\Electron-TS-Template\bin\Microsoft.NodejsTools.WebRole.dll
