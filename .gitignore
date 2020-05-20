@@ -19,7 +19,6 @@ __pycache__/
 
 # Distribution / packaging
 .Python
-build/
 develop-eggs/
 dist/
 downloads/
@@ -145,3 +144,4 @@ dmypy.json
 !data/example_custom_maps/*/*.dat
 !data/example_custom_maps/*/*.egg
 !generated_maps/*.zip
+!BeatMapSynthesizer/*/*
