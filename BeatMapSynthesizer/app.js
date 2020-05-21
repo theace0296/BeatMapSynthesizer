@@ -266,43 +266,32 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                 pythonPath: path.join(tempDir, "python/python.exe"),
                 pythonOptions: ['-u']
             };
-            python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { })
-                .on('message', function (message) {
-                if (message)
-                    mainWindow.webContents.send('task-log-append-message', message);
-            })
-                .on('stderr', function (err) {
-                if (err)
-                    mainWindow.webContents.send('task-log-append-message', err.message);
-            })
-                .on('close', function () {
-                mainWindow.webContents.send('task-progress', 3, 4);
-                mainWindow.setProgressBar(.75);
-                mm.parseFile(dir).then(metadata => {
-                    options.args = [
-                        `${dir.normalize().replace(/\\/gi, "/")}`,
-                        `${metadata.common.title} - ${metadata.common.artist}`,
-                        `${difficulty}`,
-                        `${model}`,
-                        '-k', k.toString(),
-                        '--version', version.toString(),
-                        '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
-                        '--outDir', outDir.normalize().replace(/\\/gi, "/")
-                    ];
-                    python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
-                        .on('message', function (message) {
-                        if (message && message != 'undefined')
-                            mainWindow.webContents.send('task-log-append-message', message);
-                    })
-                        .on('stderr', function (err) {
-                        if (err)
-                            mainWindow.webContents.send('task-log-append-message', err.message);
-                    })
-                        .on('close', function () {
-                        mainWindow.webContents.send('task-progress', 4, 4);
-                        mainWindow.setProgressBar(1);
-                        mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
-                    });
+            mainWindow.webContents.send('task-progress', 3, 4);
+            mainWindow.setProgressBar(.75);
+            mm.parseFile(dir).then(metadata => {
+                options.args = [
+                    `${dir.normalize().replace(/\\/gi, "/")}`,
+                    `${metadata.common.title} - ${metadata.common.artist}`,
+                    `${difficulty}`,
+                    `${model}`,
+                    '-k', k.toString(),
+                    '--version', version.toString(),
+                    '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
+                    '--outDir', outDir.normalize().replace(/\\/gi, "/")
+                ];
+                python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
+                    .on('message', function (message) {
+                    if (message && message != 'undefined')
+                        mainWindow.webContents.send('task-log-append-message', message);
+                })
+                    .on('stderr', function (err) {
+                    if (err)
+                        mainWindow.webContents.send('task-log-append-message', err.message);
+                })
+                    .on('close', function () {
+                    mainWindow.webContents.send('task-progress', 4, 4);
+                    mainWindow.setProgressBar(1);
+                    mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
                 });
             });
         }

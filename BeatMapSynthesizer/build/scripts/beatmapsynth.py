@@ -722,7 +722,7 @@ if __name__ == '__main__':
     
     os.chdir(f"{args.workingDir}/scripts")
     
-    testFile = open(f"{args.workingDir}/test.txt", 'w')
+    testFile = open(f"{args.workingDir}/debug.log", 'w')
     testFile.write(f"Current working dir: {os.getcwd()}\n")
     testFile.write(f"Song path: {args.song_path}\n")
     testFile.write(f"Song name:{args.song_name}\n")

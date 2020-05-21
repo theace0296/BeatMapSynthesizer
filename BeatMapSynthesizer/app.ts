@@ -235,6 +235,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                 fsx.copy(pythonInternalPath, path.join(tempDir, 'python')).then(() => {
                     mainWindow.webContents.send('task-progress', 2, 4);
                     mainWindow.setProgressBar(.50);
+
                     let options: Options = {
                         mode: 'text',
                         pythonPath: path.join(tempDir, "python/python.exe"),
@@ -253,6 +254,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 3, 4);
                             mainWindow.setProgressBar(.75);
+
                             mm.parseFile(dir).then(metadata => {
                                 options.args = [
                                     `${dir.normalize().replace(/\\/gi, "/")}`,
@@ -284,6 +286,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
             } else {
                 mainWindow.webContents.send('task-progress', 2, 4);
                 mainWindow.setProgressBar(.50);
+
                 let options: Options = {
                     mode: 'text',
                     pythonPath: path.join(tempDir, "python/python.exe"),
@@ -292,6 +295,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
 
                 mainWindow.webContents.send('task-progress', 3, 4);
                 mainWindow.setProgressBar(.75);
+
                 mm.parseFile(dir).then(metadata => {
                     options.args = [
                         `${dir.normalize().replace(/\\/gi, "/")}`,
