@@ -242,7 +242,7 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                         ];
                         python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
                             .on('message', function (message) {
-                            if (message && message != 'undefined')
+                            if (message && message != 'undefined' && message != null)
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
                             .on('stderr', function (err) {
@@ -281,7 +281,7 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                 ];
                 python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
                     .on('message', function (message) {
-                    if (message && message != 'undefined')
+                    if (message && message != 'undefined' && message != null)
                         mainWindow.webContents.send('task-log-append-message', message);
                 })
                     .on('stderr', function (err) {

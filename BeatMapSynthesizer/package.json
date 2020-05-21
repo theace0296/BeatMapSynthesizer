@@ -76,8 +76,8 @@
 	"main": "app.js",
 	"name": "beat-map-synthesizer",
 	"scripts": {
-		"build": "tsc --build && yarn dist",
-		"clean": "tsc --build --clean && yarn dist",
+		"build": "tsc --build",
+		"clean": "tsc --build && yarn dist",
 		"start": "tsc --build && electron .",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder --dir"

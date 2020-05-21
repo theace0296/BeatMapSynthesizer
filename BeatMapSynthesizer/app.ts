@@ -268,7 +268,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                 ];
                                 PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { /* Callback not used */ })
                                     .on('message', function (message: string) {
-                                        if (message && message != 'undefined')
+                                        if (message && message != 'undefined' && message != null)
                                             mainWindow.webContents.send('task-log-append-message', message);
                                     })
                                     .on('stderr', function (err: PythonShellError) {
@@ -309,7 +309,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                     ];
                     PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { /* Callback not used */ })
                         .on('message', function (message: string) {
-                            if (message && message != 'undefined')
+                            if (message && message != 'undefined' && message != null)
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
                         .on('stderr', function (err: PythonShellError) {
