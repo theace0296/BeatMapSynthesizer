@@ -41,58 +41,12 @@ In addition to this GitHub repo (which contains a lot of exploratory and develop
 
 ## _Installation and Use_ 
 
-Current instructions for installation and use are limited to a command line option with a Python script. More user-friendly options are coming soon!
+Download the latest release from the [Releases](https://github.com/theace0296/BeatMapSynthesizer/releases) tab.
 
-If you are familiar with conda environments and already have Python and conda installed on your system, clone this repo and set up the environment in the appropriate `environment.yml` file for your OS, activate the environment, and then proceed to step 4 in the instructions below to finish setup and run BeatMapSynth. 
+Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is unsafe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
 
-If you do not already have Anaconda and Python, follow the instructions below to set them up.
+Once open, the only required step is to specify the file(s) you want to generate Beat Maps for. You may also select the difficulty and model to use for the generation. Lastly, you can change the output directory for the generated .ZIP file, by default this is the same as the directoy the application is in. 
 
-1. Install Anaconda and Python on your system. Anaconda installs Python automatically and you can download the appropriate version [here](https://www.anaconda.com/products/individual). Follow the instructions to complete the installation. __Note:__ If you're working on a Windows machine, Anaconda will install the Anaconda Prompt, which is similar to Command Prompt. For the rest of these instructions, _make sure to use the Anaconda Prompt_, and not the native Command Prompt. For Mac users, use the Terminal for all of the instructions.
-
-2. Clone this github repo onto your system. Take note of its location on your machine and then navigate into the directory from the command line (Anaconda Prompt on Windows or the Terminal in Mac OSX, e.g. `cd path_to_directory`)
-
-3. Use the following command to set up the BeatMapSynth environment:
-
-    For Windows: ```conda env create -f Windows_environment.yml```
-
-    For Mac OSX: ```conda env create -f OSX_environment.yml```
-
-    And then activate the environment:
-
-    ```conda activate BSMapSynth-env```
-
-4. Place the necessary models into the `models/` directory by downloading [this zipped folder](https://drive.google.com/open?id=1p7j0sENy0DzcMHd3iQ_LQw14j6OcKLsY) of the models. Unzip the folder, and move all of the files from the unzipped folder into the `models/` folder of your repo. Don't just drag the unzipped folder to the `models/` folder, you need to take out the individual files.
-
-5. Run BeatMapSynth! The following line of code will output a custom Beat Saber map file in a zipped folder.
-
-    ```python beatmapsynth.py ['filepath'] ['Song Name'] [difficulty] [model] [optional: -k] [optional: --version]```
-
-    Where: 
-
-    `['filepath']` is the path to your music file of choice
-
-    `['Song Name']` is the name you wish to display in Beat Saber (will also be the name of the zip folder)
-
-    `[difficulty]` is the desired difficulty level of the generated map, can be `'easy'`, `'normal'`, `'hard'`, `'expert'`, or `'expertPlus'`
-
-    `[model]` is the model to use in mapping, can be `'random'`, `'HMM'`, `'segmented_HMM'`, or `'rate_modulated_segmented_HMM'`
-
-    `[-k]` is the number of segments expected in the song for the segmented models. 5 is the default and seems to be a good fit for most songs following a standard verse-chorus structure. You may want to play around with this parameter if you find your mappings turn out too repetitive or not repetitive enough
-
-    `[--version]` is the HMM model version. Can be `1` or `2`, 1 being a model trained with custom maps with ratings on beatsaver.com of over 90%, and 2 being trained on maps with rating over 70%. 2 is default.
-
-    A full command might look like this in the Anaconda Prompt on Windows:
-
-    ```python beatmapsynth.py "C:\Users\wvsha\Desktop\BeatMapSynthesizer\song.mp3" "Example_song" expert rate_modulated_segmented_HMM -k 4 --version 1```
-
-    Or in a Mac terminal:
-
-    ```python beatmapsynth.py '~/Desktop/music_files/song.mp3' 'Example Song' 'expert' 'rate_modulated_segmented_HMM' -k 4 --version 1```
-
-    It generally takes less than 30 seconds to run. It will probably print a warning about PySoundFile not working and maybe something about a Numba deprecation warning, but this is fine. 
-    
-    After it finishes, a zip folder will appear in your working directory (i.e., the root folder of this repo). Unzip this folder, place it in the 'CustomMusic' folder in your Beat Saber system files, start Beat Saber, and find the map under Custom Music! 
-
-To use BeatMapSynth again after initial installation, just navigate into your repo again, reactivate the BSMapSynth-env (`conda activate BSMapSynth-env`), then you'll be good to go.
+After it finishes, a zip folder will appear in either the directory the application is in, or the directory you choose in the application. Unzip this folder, place it in the 'CustomMusic' folder in your Beat Saber system files, start Beat Saber, and find the map under Custom Music! 
 
 That's it! Please enjoy and let me know how it works for you! If you encounter any bugs, feel free to submit an issue, or if you fix it yourself, submit a pull request! 
