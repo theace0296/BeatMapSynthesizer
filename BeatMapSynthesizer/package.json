@@ -1,24 +1,90 @@
 {
 	"author": {
-		"name": ""
+		"name": "Wyatt Sharber and Chase Rosendale"
 	},
-	"description": "Electron-TS-Template",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/theace0296/BeatMapSynthesizer.git"
+	},
+	"description": "Beat Map Synthesizer",
+	"build": {
+		"appId": "beatmapsynthesizer.app",
+		"artifactName": "${name}-${os}-${arch}-${version}.${ext}",
+		"electronCompile": false,
+		"win": {
+			"target": "portable"
+		},
+		"publish": [
+			{
+				"provider": "github",
+				"owner": "TheAce0296",
+				"releaseType": "prerelease"
+			}
+		],
+		"files": [
+			"**/*",
+			"!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+			"!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+			"!**/node_modules/*.d.ts",
+			"!**/node_modules/.bin",
+			"!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+			"!.editorconfig",
+			"!**/._*",
+			"!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+			"!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+			"!**/{appveyor.yml,.travis.yml,circle.yml}",
+			"!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}",
+			"app.js",
+			"preload.js",
+			"renderer.js",
+			"index.html",
+			"build/css/docs.css",
+			"build/css/flat-ui.css",
+			"build/images/beatMapSynth_Banner.jpg",
+			"build/images/beatMapSynth_Banner.jpg",
+			"build/scripts/beatmapsynth.py",
+			"build/scripts/cover.jpg",
+			"build/scripts/ffmpeg.exe",
+			"build/scripts/ffplay.exe",
+			"build/scripts/ffprobe.exe",
+			"build/scripts/py_requirements.txt",
+			"build/scripts/models/HMM_easy.pkl",
+			"build/scripts/models/HMM_easy_v2.pkl",
+			"build/scripts/models/HMM_expert.pkl",
+			"build/scripts/models/HMM_expert_v2.pkl",
+			"build/scripts/models/HMM_expertPlus.pkl",
+			"build/scripts/models/HMM_expertPlus_v2.pkl",
+			"build/scripts/models/HMM_hard.pkl",
+			"build/scripts/models/HMM_hard_v2.pkl",
+			"build/scripts/models/HMM_normal.pkl",
+			"build/scripts/models/HMM_normal_v2.pkl",
+			"build/python/**/*",
+			"!*.ts",
+			"!*.map",
+			"!*.njsproj"
+		]
+	},
 	"devDependencies": {
 		"@types/node": "^8.0.14",
 		"electron": "^9.0.0",
-		"typescript": "^3.2.2"
+		"electron-builder": "^22.6.1",
+		"typescript": "^3.2.2",
+		"yarn": "^1.22.4"
 	},
 	"electronCompile": false,
 	"main": "app.js",
-	"name": "electron-ts-template",
+	"name": "beat-map-synthesizer",
 	"scripts": {
-		"build": "tsc --build",
-		"clean": "tsc --build --clean",
-		"start": "tsc --build && electron ."
+		"build": "tsc --build && yarn dist",
+		"clean": "tsc --build --clean && yarn dist",
+		"start": "tsc --build && electron .",
+		"dist": "electron-builder -p always",
+		"pack": "electron-builder --dir"
 	},
-	"version": "0.0.1",
+	"version": "0.1.0",
 	"dependencies": {
 		"flat-ui": "^2.1.1",
+		"fs-extra": "^9.0.0",
 		"music-metadata": "^6.4.0",
 		"python-shell": "^2.0.1"
 	}

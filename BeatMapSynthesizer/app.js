@@ -5,6 +5,7 @@ const electron_1 = require("electron");
 const path = require("path");
 const python_shell_1 = require("python-shell");
 const mm = require("music-metadata");
+const fsx = require("fs-extra");
 /**
  * `mainWindow` is the render process window the user interacts with.
  */
@@ -168,36 +169,143 @@ electron_1.ipcMain.on('__selectFiles__', function (event) {
     });
 });
 /**
+ * `__selectDirectory__` is a inter-process communication channel for opening
+ * a native OS directory selection dialog.
+ * @param event  The inter-process communication sender of `__selectDirectory__`.
+ * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
+ */
+electron_1.ipcMain.on('__selectOutDirectory__', function (event) {
+    const options = {
+        title: 'Select a folder',
+        defaultPath: 'C:\\',
+        properties: ['openDirectory']
+    };
+    electron_1.dialog.showOpenDialog(mainWindow, options)
+        .then((dirs) => {
+        if (!dirs.canceled) {
+            event.sender.send("selectOutDirectory-finished", dirs.filePaths);
+        }
+    }).catch((err) => {
+        _error(err);
+    });
+});
+/**
  * `__generateBeatMap__` is a inter-process communication channel for starting
  * the beat map generation.
  * @param event  The inter-process communication sender of `__generateBeatMap__`.
  * @param dir  The path of the directory/file to generate the beat map from.
  */
-electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, model, k = 5, version = 2) {
-    // Integrate this IPC for generating a beat map
-    let options = {
-        mode: 'text',
-        pythonPath: path.join(electron_1.app.getAppPath().toString(), "build/python/python.exe"),
-        pythonOptions: ['-u']
-    };
-    python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(electron_1.app.getAppPath().toString(), '/build/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { })
-        .on('message', function (message) {
-        mainWindow.webContents.send('task-log-append-message', message);
-    })
-        .on('stderr', function (err) {
-        mainWindow.webContents.send('task-log-append-message', err.message);
-    })
-        .on('close', function () {
-        mm.parseFile(dir).then(metadata => {
-            options.args = [`${dir.normalize().replace(/\\/gi, "/")}`, `${metadata.common.title} - ${metadata.common.artist}`, `${difficulty}`, `${model}`, '-k', k.toString(), '--version', version.toString()];
-            python_shell_1.PythonShell.run(path.join(electron_1.app.getAppPath().toString(), '/build/scripts/beatmapsynth.py'), options, function () { })
+electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, model, k = 5, version = 2, outDir = process.env.PORTABLE_EXECUTABLE_DIR) {
+    let pythonInternalPath = path.join(electron_1.app.getAppPath().toString(), "build/python");
+    let scriptsInternalPath = path.join(electron_1.app.getAppPath().toString(), "build/scripts");
+    let tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
+    mainWindow.setProgressBar(0);
+    mainWindow.webContents.send('task-progress', 0, 4);
+    fsx.copy(scriptsInternalPath, path.join(tempDir, 'scripts'))
+        .then(() => {
+        mainWindow.webContents.send('task-progress', 1, 4);
+        mainWindow.setProgressBar(.25);
+        // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
+        // Eventually this can just be tied to file versions and the auto-update system
+        let updatePythonFiles = (Date.now() - fsx.statSync(path.join(tempDir, 'python', 'python.exe')).mtimeMs) > 86400000;
+        if (updatePythonFiles) {
+            fsx.copy(pythonInternalPath, path.join(tempDir, 'python')).then(() => {
+                mainWindow.webContents.send('task-progress', 2, 4);
+                mainWindow.setProgressBar(.50);
+                let options = {
+                    mode: 'text',
+                    pythonPath: path.join(tempDir, "python/python.exe"),
+                    pythonOptions: ['-u']
+                };
+                python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { })
+                    .on('message', function (message) {
+                    if (message)
+                        mainWindow.webContents.send('task-log-append-message', message);
+                })
+                    .on('stderr', function (err) {
+                    if (err)
+                        mainWindow.webContents.send('task-log-append-message', err.message);
+                })
+                    .on('close', function () {
+                    mainWindow.webContents.send('task-progress', 3, 4);
+                    mainWindow.setProgressBar(.75);
+                    mm.parseFile(dir).then(metadata => {
+                        options.args = [
+                            `${dir.normalize().replace(/\\/gi, "/")}`,
+                            `${metadata.common.title} - ${metadata.common.artist}`,
+                            `${difficulty}`,
+                            `${model}`,
+                            '-k', k.toString(),
+                            '--version', version.toString(),
+                            '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
+                            '--outDir', outDir.normalize().replace(/\\/gi, "/")
+                        ];
+                        python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
+                            .on('message', function (message) {
+                            if (message && message != 'undefined')
+                                mainWindow.webContents.send('task-log-append-message', message);
+                        })
+                            .on('stderr', function (err) {
+                            if (err)
+                                mainWindow.webContents.send('task-log-append-message', err.message);
+                        })
+                            .on('close', function () {
+                            mainWindow.webContents.send('task-progress', 4, 4);
+                            mainWindow.setProgressBar(1);
+                            mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
+                        });
+                    });
+                });
+            });
+        }
+        else {
+            mainWindow.webContents.send('task-progress', 2, 4);
+            mainWindow.setProgressBar(.50);
+            let options = {
+                mode: 'text',
+                pythonPath: path.join(tempDir, "python/python.exe"),
+                pythonOptions: ['-u']
+            };
+            python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { })
                 .on('message', function (message) {
-                mainWindow.webContents.send('task-log-append-message', message);
+                if (message)
+                    mainWindow.webContents.send('task-log-append-message', message);
             })
                 .on('stderr', function (err) {
-                mainWindow.webContents.send('task-log-append-message', err.message);
+                if (err)
+                    mainWindow.webContents.send('task-log-append-message', err.message);
+            })
+                .on('close', function () {
+                mainWindow.webContents.send('task-progress', 3, 4);
+                mainWindow.setProgressBar(.75);
+                mm.parseFile(dir).then(metadata => {
+                    options.args = [
+                        `${dir.normalize().replace(/\\/gi, "/")}`,
+                        `${metadata.common.title} - ${metadata.common.artist}`,
+                        `${difficulty}`,
+                        `${model}`,
+                        '-k', k.toString(),
+                        '--version', version.toString(),
+                        '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
+                        '--outDir', outDir.normalize().replace(/\\/gi, "/")
+                    ];
+                    python_shell_1.PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { })
+                        .on('message', function (message) {
+                        if (message && message != 'undefined')
+                            mainWindow.webContents.send('task-log-append-message', message);
+                    })
+                        .on('stderr', function (err) {
+                        if (err)
+                            mainWindow.webContents.send('task-log-append-message', err.message);
+                    })
+                        .on('close', function () {
+                        mainWindow.webContents.send('task-progress', 4, 4);
+                        mainWindow.setProgressBar(1);
+                        mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
+                    });
+                });
             });
-        });
+        }
     });
 });
 //# sourceMappingURL=app.js.map

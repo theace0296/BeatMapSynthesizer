@@ -22,7 +22,7 @@ import sys
 import argparse
 
 #Main Function:
-def beat_map_synthesizer(song_path, song_name, difficulty, model, k=5, version = 2):
+def beat_map_synthesizer(song_path, song_name, difficulty, model, k, version, outDir):
     """
     Function to load a music file and generate a custom Beat Saber map based on the specified model and difficulty. Outputs a zipped folder of necessary files to play the custom map in the Beat Saber game.
     
@@ -38,16 +38,18 @@ def beat_map_synthesizer(song_path, song_name, difficulty, model, k=5, version =
     k = number of song segments if using a segmented model. Default is 5, may want to increase or decrease based on song complexity
    
     version = for HMM models, can choose either 1 or 2. 1 was trained on a smaller, but potentially higher quality dataset (custom maps with over 90% rating on beatsaver.com), while 2 was trained on a larger dataset of custom maps with over 70% rating, so it may have a larger pool of "potential moves."
+    
+    outDir = the directory to put the output zip file in
     ***
     """
     if model == 'random':
-        random_mapper(song_path, song_name, difficulty)
+        random_mapper(song_path, song_name, difficulty, outDir = outDir)
     elif model == 'HMM':
-        HMM_mapper(song_path, song_name, difficulty, version = version)
+        HMM_mapper(song_path, song_name, difficulty, version = version, outDir = outDir)
     elif model == 'segmented_HMM':
-        segmented_HMM_mapper(song_path, song_name, difficulty, k = k, version = version)
+        segmented_HMM_mapper(song_path, song_name, difficulty, k = k, version = version, outDir = outDir)
     elif model == 'rate_modulated_segmented_HMM':
-        rate_modulated_segmented_HMM_mapper(song_path, song_name, difficulty, version = version, k = k)
+        rate_modulated_segmented_HMM_mapper(song_path, song_name, difficulty, version = version, k = k, outDir = outDir)
     else:
         print('Please specify model for mapping.')
 
@@ -142,10 +144,10 @@ def obstacles_writer(beat_times, difficulty):
     obstacles_list = []
     return obstacles_list
 
-def zip_folder_exporter(song_name, difficulty):
+def zip_folder_exporter(song_name, difficulty, outDir):
     "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
     files = ['info.dat', f"{difficulty}.dat", 'cover.jpg', 'song.egg']
-    with ZipFile(f"{song_name}.zip", 'w') as custom:
+    with ZipFile(f"{outDir}/{song_name}.zip", 'w') as custom:
         for file in files:
             custom.write(file)
     for file in files:
@@ -153,7 +155,7 @@ def zip_folder_exporter(song_name, difficulty):
             os.remove(file)
 
 #Random Mapping Functions
-def random_mapper(song_path, song_name, difficulty):
+def random_mapper(song_path, song_name, difficulty, outDir):
     """Function to output the automatically created completely random map (i.e. baseline model) for a provided song. Returns a zipped folder that can be unzipped and placed in the 'CustomMusic' folder in the Beat Saber game directory and played. CAUTION: This is completely random and is likely not enjoyable if even playable!"""
     #Load song and get beat features
     print("Loading Song...")
@@ -173,7 +175,7 @@ def random_mapper(song_path, song_name, difficulty):
     print("Converting music file...")
     music_file_converter(song_path)
     print("Zipping folder...")
-    zip_folder_exporter(song_name, difficulty)
+    zip_folder_exporter(song_name, difficulty, outDir)
     print("Finished! Look for zipped folder in your current path, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
 
 def beat_features(song_path):
@@ -230,7 +232,7 @@ def random_notes_writer_v2(beat_times, difficulty, bpm):
     return notes_list
 
 #Hidden Markov Models Mapping Functions
-def HMM_mapper(song_path, song_name, difficulty, version = 2):
+def HMM_mapper(song_path, song_name, difficulty, version, outDir):
     """This function generates a custom map based on a Hidden Markov Model."""
     #Load song and get beat features
     print("Loading Song...")
@@ -250,7 +252,7 @@ def HMM_mapper(song_path, song_name, difficulty, version = 2):
     print("Converting music file...")
     music_file_converter(song_path)
     print("Zipping folder...")
-    zip_folder_exporter(song_name, difficulty)
+    zip_folder_exporter(song_name, difficulty, outDir)
     print("Finished! Look for zipped folder in your current path, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
 
 def walk_to_df(walk):
@@ -318,7 +320,7 @@ def HMM_notes_writer(beat_list, difficulty, version):
 
 #Segmented HMM Functions
 
-def segmented_HMM_mapper(song_path, song_name, difficulty, k = 5, version = 2):
+def segmented_HMM_mapper(song_path, song_name, difficulty, k, version, outDir):
     """This function generates a custom map based on a HMM model that operates on song segments. First, Laplacian song segmentation is performed to identify similar portions of songs. Then, a HMM is used to generate a block sequence through the first of each of these identified song segments. If that segment is repeated later in the song, the block sequence will be repeated."""
     #Load song and get beat features
     print("Loading Song...")
@@ -338,7 +340,7 @@ def segmented_HMM_mapper(song_path, song_name, difficulty, k = 5, version = 2):
     print("Converting music file...")
     music_file_converter(song_path)
     print("Zipping folder...")
-    zip_folder_exporter(song_name, difficulty)
+    zip_folder_exporter(song_name, difficulty, outDir)
     print("Finished! Look for zipped folder in your current path, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
 
 def laplacian_segmentation(y, sr, k = 5):
@@ -492,7 +494,7 @@ def segmented_HMM_notes_writer(y, sr, k, difficulty, version = 2):
     return notes_list
 
 #Rate Modulated Segmented HMM mapping functions
-def rate_modulated_segmented_HMM_mapper(song_path, song_name, difficulty, version = 2, k = 5):
+def rate_modulated_segmented_HMM_mapper(song_path, song_name, difficulty, version, k, outDir):
     """This function generates the files for a custom map using a rate modulated segmented HMM model."""
     #Load song and get beat features
     print("Loading Song...")
@@ -511,7 +513,7 @@ def rate_modulated_segmented_HMM_mapper(song_path, song_name, difficulty, versio
     print("Converting music file...")
     music_file_converter(song_path)
     print("Zipping folder...")
-    zip_folder_exporter(song_name, difficulty)
+    zip_folder_exporter(song_name, difficulty, outDir)
     print("Finished! Look for zipped folder in your current path, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
 
 def choose_rate(db, difficulty):
@@ -706,7 +708,6 @@ def rate_modulated_segmented_HMM_notes_writer(y, sr, k, difficulty, version):
     return notes_list, modulated_beat_list
 
 if __name__ == '__main__':
-    os.chdir(f"{os.getcwd()}/build/scripts")
     parser = argparse.ArgumentParser()
     parser.add_argument('song_path', metavar='path', type=str, help='File Path to song file')
     parser.add_argument('song_name', type=str, help='Name of song to be displayed in Beat Saber')
@@ -714,8 +715,23 @@ if __name__ == '__main__':
     parser.add_argument('model', type=str, help="Desired model for mapping: 'random', 'HMM', 'segmented_HMM', 'rate_modulated_segmented_HMM'")
     parser.add_argument('-k', type=int, help="Number of expected segments for segmented model. Default 5", default=5, required=False)
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
+    parser.add_argument('--workingDir', type=str, help="Directory of scripts folder (this is automatically done, do not use this argument!)", required=True)
+    parser.add_argument('--outDir', type=str, help="Directory to save outputed files to. Default is the current directory.", required=False)
 
     args = parser.parse_args()
     
-    beat_map_synthesizer(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version)
+    os.chdir(f"{args.workingDir}/scripts")
+    
+    testFile = open(f"{args.workingDir}/test.txt", 'w')
+    testFile.write(f"Current working dir: {os.getcwd()}\n")
+    testFile.write(f"Song path: {args.song_path}\n")
+    testFile.write(f"Song name:{args.song_name}\n")
+    testFile.write(f"Difficulty: {args.difficulty}\n")
+    testFile.write(f"Model: {args.model}\n")
+    testFile.write(f"K: {args.k}\n")
+    testFile.write(f"Version: {args.version}\n")
+    testFile.write(f"Out Directory: {args.outDir}\n")
+    testFile.close()
+    
+    beat_map_synthesizer(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.outDir)
     
