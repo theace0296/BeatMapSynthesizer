@@ -6,6 +6,7 @@
 		"type": "git",
 		"url": "https://github.com/theace0296/BeatMapSynthesizer.git"
 	},
+	"license": "MIT",
 	"description": "Beat Map Synthesizer",
 	"build": {
 		"appId": "beatmapsynthesizer.app",
