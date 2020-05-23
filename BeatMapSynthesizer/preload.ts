@@ -4,7 +4,7 @@ import { ipcRenderer } from "electron";
 
 let selectedDirs: string[] = [];
 let selectedDiff: string = 'all';
-let selectedModel: string = 'rate_modulated_segmented_HMM';
+let selectedModel: string = 'random';
 let selectedOutDir: string = process.env.PORTABLE_EXECUTABLE_DIR;
 
 window.addEventListener('DOMContentLoaded', () => {
