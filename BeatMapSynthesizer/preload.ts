@@ -3,7 +3,7 @@
 import { ipcRenderer } from "electron";
 import { beatMapArgs } from "./app.js";
 
-let args: beatMapArgs;
+let args: beatMapArgs = new beatMapArgs();
 
 let selectedDirs: string[] = [];
 args.difficulty = 'all';
@@ -14,6 +14,7 @@ class operationType {
     static directory: number = 0;
     static files: number = 1;
 }
+
 var currentOperationType: number = operationType.files;
 
 window.addEventListener('DOMContentLoaded', () => {

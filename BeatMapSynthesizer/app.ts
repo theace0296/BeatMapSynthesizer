@@ -12,7 +12,7 @@ let mainWindow: Electron.BrowserWindow;
 /**
  * `createMainWindow()` is responsible for the initial creation of the main window.
  */
-function createWindow() {
+function createMainWindow() {
     // Create the browser window.
     mainWindow = new BrowserWindow({
         width: 800,
@@ -66,6 +66,8 @@ class workerWindow {
             // when you should delete the corresponding element.
             this.window = null;
         });
+
+        return this;
     }
 
     // Class methods
@@ -92,12 +94,23 @@ class workerWindow {
  */
 export class beatMapArgs {
     dir: string;
-    difficulty: string = 'all';
-    model: string = 'random';
-    k: number = 5;
-    version: number = 2;
-    outDir: string = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
-    zipFiles: number = 0
+    difficulty: string;
+    model: string;
+    k: number;
+    version: number;
+    outDir: string;
+    zipFiles: number;
+
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+        this.zipFiles = 0;
+        return this;
+    }
 }
 
 /**
@@ -122,13 +135,13 @@ function _error(message: string) {
  * Some APIs can only be used after this event occurs.
  */
 app.whenReady().then(() => {
-    createWindow();
+    createMainWindow();
 
     app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
         if (BrowserWindow.getAllWindows().length === 0)
-            createWindow();
+            createMainWindow();
     })
 })
 

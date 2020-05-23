@@ -3,7 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 const electron_1 = require("electron");
-let args;
+const app_js_1 = require("./app.js");
+let args = new app_js_1.beatMapArgs();
 let selectedDirs = [];
 args.difficulty = 'all';
 args.model = 'random';

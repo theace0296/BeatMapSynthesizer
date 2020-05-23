@@ -22,7 +22,7 @@ let mainWindow;
 /**
  * `createMainWindow()` is responsible for the initial creation of the main window.
  */
-function createWindow() {
+function createMainWindow() {
     // Create the browser window.
     mainWindow = new electron_1.BrowserWindow({
         width: 800,
@@ -67,6 +67,7 @@ class workerWindow {
             // when you should delete the corresponding element.
             this.window = null;
         });
+        return this;
     }
     // Class methods
     copyFiles() {
@@ -94,12 +95,14 @@ class workerWindow {
  */
 class beatMapArgs {
     constructor() {
+        this.dir = '';
         this.difficulty = 'all';
         this.model = 'random';
         this.k = 5;
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
+        return this;
     }
 }
 exports.beatMapArgs = beatMapArgs;
@@ -123,12 +126,12 @@ function _error(message) {
  * Some APIs can only be used after this event occurs.
  */
 electron_1.app.whenReady().then(() => {
-    createWindow();
+    createMainWindow();
     electron_1.app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
         if (electron_1.BrowserWindow.getAllWindows().length === 0)
-            createWindow();
+            createMainWindow();
     });
 });
 /**

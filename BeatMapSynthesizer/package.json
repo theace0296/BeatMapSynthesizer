@@ -61,7 +61,6 @@
 			"build/scripts/models/HMM_normal.pkl",
 			"build/scripts/models/HMM_normal_v2.pkl",
 			"build/python/**/*",
-			"!*.ts",
 			"!*.map",
 			"!*.njsproj"
 		]
@@ -83,7 +82,7 @@
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder --dir"
 	},
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"dependencies": {
 		"compare-versions": "3.6.0",
 		"electron-promise-ipc": "^2.1.0",

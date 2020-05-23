@@ -1,6 +1,3 @@
 C:\Users\chase.CRR-MSI-X99\source\repos\BeatMapSynthesizer\BeatMapSynthesizer\obj\Debug\BeatMapSynthesizer.njsprojAssemblyReference.cache
 C:\Users\chase.CRR-MSI-X99\source\repos\BeatMapSynthesizer\BeatMapSynthesizer\obj\Debug\BeatMapSynthesizer.njsproj.CoreCompileInputs.cache
 C:\Users\chase.CRR-MSI-X99\source\repos\BeatMapSynthesizer\BeatMapSynthesizer\bin\Microsoft.NodejsTools.WebRole.dll
-D:\SOURCE\repos\BeatMapSynthesizer\BeatMapSynthesizer\obj\Debug\BeatMapSynthesizer.njsproj.CoreCompileInputs.cache
-D:\SOURCE\repos\BeatMapSynthesizer\BeatMapSynthesizer\bin\Microsoft.NodejsTools.WebRole.dll
-D:\SOURCE\repos\BeatMapSynthesizer\BeatMapSynthesizer\obj\Debug\BeatMapSynthesizer.njsprojAssemblyReference.cache
