@@ -255,8 +255,8 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
                         .on('stderr', function (err: PythonShellError) {
-                            // if (err)
-                                // mainWindow.webContents.send('task-log-append-message', err);
+                            if (err)
+                                mainWindow.webContents.send('console-log', err);
                         })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 3, 4);
@@ -289,8 +289,8 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                             mainWindow.webContents.send('task-log-append-message', message);
                                     })
                                     .on('stderr', function (err: PythonShellError) {
-                                        // if (err)
-                                            // mainWindow.webContents.send('task-log-append-message', err);
+                                        if (err)
+                                            mainWindow.webContents.send('console-log', err);
                                     })
                                     .on('close', function () {
                                         mainWindow.webContents.send('task-progress', 4, 4);
@@ -331,8 +331,8 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
                         .on('stderr', function (err: PythonShellError) {
-                            // if (err)
-                                // mainWindow.webContents.send('task-log-append-message', err);
+                            if (err)
+                                mainWindow.webContents.send('console-log', err);
                         })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 4, 4);
