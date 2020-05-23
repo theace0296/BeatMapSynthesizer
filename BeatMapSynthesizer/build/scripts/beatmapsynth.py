@@ -279,7 +279,8 @@ class Main:
         with ZipFile(f"{self.outDir}/{self.song_name}.zip", 'w') as custom:
             for file in files:
                 custom.write(file, arcname=os.path.basename(file))
-                os.remove(file)
+        for file in files:
+            os.remove(file)
         os.rmdir(self.workingDir)
 
     def getBeatFeatures(self):
