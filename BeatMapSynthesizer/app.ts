@@ -4,6 +4,7 @@ import * as path from 'path';
 import { PythonShell, Options, PythonShellError } from 'python-shell';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
+import * as compareVersions from 'compare-versions';
 
 /**
  * `mainWindow` is the render process window the user interacts with.
@@ -228,10 +229,16 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
             mainWindow.setProgressBar(.25);
 
             // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
-            // Eventually this can just be tied to file versions and the auto-update system
-            let updatePythonFiles = (Date.now() - fsx.statSync(path.join(tempDir, 'python', 'python.exe')).mtimeMs) > 86400000; 
+            let updateFiles = false;
+            if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
+                updateFiles = true;
+            }
+            else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), app.getVersion().toString(), '<')) {
+                updateFiles = true;
+            }
 
-            if (updatePythonFiles) {
+            if (updateFiles) {
+                fsx.writeFileSync(path.join(tempDir, 'version.txt'), app.getVersion().toString());
                 fsx.copy(pythonInternalPath, path.join(tempDir, 'python')).then(() => {
                     mainWindow.webContents.send('task-progress', 2, 4);
                     mainWindow.setProgressBar(.50);
@@ -247,18 +254,24 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                             if (message)
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
-                        .on('stderr', function (err: PythonShellError) {
-                            if (err)
-                                mainWindow.webContents.send('task-log-append-message', err.message);
-                        })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 3, 4);
                             mainWindow.setProgressBar(.75);
 
                             mm.parseFile(dir).then(metadata => {
+                                let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
+                                let trackname = metadata.common.title;
+                                let artistname = metadata.common.artist;
+                                for (var invalidchar of invalidchars) {
+                                    if (trackname.includes(invalidchar))
+                                        trackname.replace(invalidchar, '^');
+                                    if (artistname.includes(invalidchar))
+                                        artistname.replace(invalidchar, '^');
+                                }
+
                                 options.args = [
                                     `${dir.normalize().replace(/\\/gi, "/")}`,
-                                    `${metadata.common.title} - ${metadata.common.artist}`,
+                                    `${trackname} - ${artistname}`,
                                     `${difficulty}`,
                                     `${model}`,
                                     '-k', k.toString(),
@@ -271,10 +284,6 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                         if (message && message != 'undefined' && message != null)
                                             mainWindow.webContents.send('task-log-append-message', message);
                                     })
-                                    .on('stderr', function (err: PythonShellError) {
-                                        if (err)
-                                            mainWindow.webContents.send('task-log-append-message', err.message);
-                                    })
                                     .on('close', function () {
                                         mainWindow.webContents.send('task-progress', 4, 4);
                                         mainWindow.setProgressBar(1);
@@ -283,7 +292,8 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                             });
                         });
                 });
-            } else {
+            }
+            else {
                 mainWindow.webContents.send('task-progress', 2, 4);
                 mainWindow.setProgressBar(.50);
 
@@ -314,7 +324,7 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                         })
                         .on('stderr', function (err: PythonShellError) {
                             if (err)
-                                mainWindow.webContents.send('task-log-append-message', err.message);
+                                mainWindow.webContents.send('task-log-append-message', err);
                         })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 4, 4);

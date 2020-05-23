@@ -14,3 +14,4 @@ scikit-learn==0.22.2.post1
 scipy==1.4.1
 soundfile==0.10.3.post1
 unidecode==1.1.1
+eyed3==0.9.5

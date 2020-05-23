@@ -6,6 +6,7 @@ const path = require("path");
 const python_shell_1 = require("python-shell");
 const mm = require("music-metadata");
 const fsx = require("fs-extra");
+const compareVersions = require("compare-versions");
 /**
  * `mainWindow` is the render process window the user interacts with.
  */
@@ -206,9 +207,15 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
         mainWindow.webContents.send('task-progress', 1, 4);
         mainWindow.setProgressBar(.25);
         // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
-        // Eventually this can just be tied to file versions and the auto-update system
-        let updatePythonFiles = (Date.now() - fsx.statSync(path.join(tempDir, 'python', 'python.exe')).mtimeMs) > 86400000;
-        if (updatePythonFiles) {
+        let updateFiles = false;
+        if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
+            updateFiles = true;
+        }
+        else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), electron_1.app.getVersion().toString(), '<')) {
+            updateFiles = true;
+        }
+        if (updateFiles) {
+            fsx.writeFileSync(path.join(tempDir, 'version.txt'), electron_1.app.getVersion().toString());
             fsx.copy(pythonInternalPath, path.join(tempDir, 'python')).then(() => {
                 mainWindow.webContents.send('task-progress', 2, 4);
                 mainWindow.setProgressBar(.50);
@@ -222,17 +229,22 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                     if (message)
                         mainWindow.webContents.send('task-log-append-message', message);
                 })
-                    .on('stderr', function (err) {
-                    if (err)
-                        mainWindow.webContents.send('task-log-append-message', err.message);
-                })
                     .on('close', function () {
                     mainWindow.webContents.send('task-progress', 3, 4);
                     mainWindow.setProgressBar(.75);
                     mm.parseFile(dir).then(metadata => {
+                        let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
+                        let trackname = metadata.common.title;
+                        let artistname = metadata.common.artist;
+                        for (var invalidchar of invalidchars) {
+                            if (trackname.includes(invalidchar))
+                                trackname.replace(invalidchar, '^');
+                            if (artistname.includes(invalidchar))
+                                artistname.replace(invalidchar, '^');
+                        }
                         options.args = [
                             `${dir.normalize().replace(/\\/gi, "/")}`,
-                            `${metadata.common.title} - ${metadata.common.artist}`,
+                            `${trackname} - ${artistname}`,
                             `${difficulty}`,
                             `${model}`,
                             '-k', k.toString(),
@@ -244,10 +256,6 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                             .on('message', function (message) {
                             if (message && message != 'undefined' && message != null)
                                 mainWindow.webContents.send('task-log-append-message', message);
-                        })
-                            .on('stderr', function (err) {
-                            if (err)
-                                mainWindow.webContents.send('task-log-append-message', err.message);
                         })
                             .on('close', function () {
                             mainWindow.webContents.send('task-progress', 4, 4);
@@ -286,7 +294,7 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                 })
                     .on('stderr', function (err) {
                     if (err)
-                        mainWindow.webContents.send('task-log-append-message', err.message);
+                        mainWindow.webContents.send('task-log-append-message', err);
                 })
                     .on('close', function () {
                     mainWindow.webContents.send('task-progress', 4, 4);
