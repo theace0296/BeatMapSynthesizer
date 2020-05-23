@@ -23,7 +23,7 @@
             <div class="col-lg-6">
                 <button id="selectFilesButton" class="btn btn-block btn-lg btn-primary">Select file(s)</button>
             </div>
-            <div class="col-lg-6 hidden">
+            <div class="col-lg-6">
                 <button id="selectDirectoryButton" class="btn btn-block btn-lg btn-primary">Select folder(s)</button>
             </div>
         </div>
@@ -77,6 +77,10 @@
             <br />
             <div class="col-lg-6">
                 <button id="generateBeatMapButton" class="btn btn-block btn-lg btn-primary">Generate Beat Map(s)</button>
+                <label class="checkbox" for="zipFilesCheckbox" id="zipFilesLabel">
+                    <input type="checkbox" value="" id="zipFilesCheckbox" data-toggle="checkbox">
+                    Zip files after creating output? 
+                </label>
             </div>
             <div class="col-lg-6">
                 <button id="cancelButton" class="btn btn-block btn-lg btn-danger">Cancel</button>

@@ -35,6 +35,7 @@
     <DebugSymbols>true</DebugSymbols>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="worker.html" />
     <None Include="app.ts" />
     <Content Include="index.html" />
     <Content Include="package.json" />
@@ -43,6 +44,7 @@
   <ItemGroup>
     <TypeScriptCompile Include="preload.ts" />
     <TypeScriptCompile Include="renderer.ts" />
+    <TypeScriptCompile Include="worker.ts" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
   <ProjectExtensions>

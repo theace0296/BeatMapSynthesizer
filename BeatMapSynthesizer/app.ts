@@ -1,10 +1,8 @@
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import promiseIpc from 'electron-promise-ipc';
 import * as path from 'path';
-import { PythonShell, Options, PythonShellError } from 'python-shell';
-import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
-import * as compareVersions from 'compare-versions';
 
 /**
  * `mainWindow` is the render process window the user interacts with.
@@ -41,6 +39,68 @@ function createWindow() {
 }
 
 /**
+ * `workerWindow` is a class for creating hidden process windows that are responsible for running operations.
+ */
+class workerWindow {
+    // Class variables
+    window: Electron.BrowserWindow;
+
+    // Constructor
+    constructor() {
+        // create hidden worker window
+        this.window = new BrowserWindow({
+            parent: mainWindow,
+            show: false,
+            autoHideMenuBar: true,
+            webPreferences: {
+                preload: path.join(app.getAppPath().toString(), "worker.js")
+            }
+        });
+
+        // load the worker.html
+        this.window.loadFile(path.join(app.getAppPath().toString(), 'worker.html'));
+
+        this.window.on("closed", () => {
+            // Dereference the window object, usually you would store windows
+            // in an array if your app supports multi windows, this is the time
+            // when you should delete the corresponding element.
+            this.window = null;
+        });
+    }
+
+    // Class methods
+    async copyFiles(): Promise<unknown> {
+        return (await promiseIpc.send('worker-copy-files', this.window.webContents));
+    }
+
+    async updatePython(): Promise<unknown> {
+        return (await promiseIpc.send('worker-update-python', this.window.webContents));
+    }
+
+    async generateBeatMaps(dir: string, args: beatMapArgs) {
+        args.dir = dir;
+        return (await promiseIpc.send('worker-generate-beatmaps', this.window.webContents, args));
+    }
+
+    close() {
+        this.window.close();
+    }
+}
+
+/**
+ * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+export class beatMapArgs {
+    dir: string;
+    difficulty: string = 'all';
+    model: string = 'random';
+    k: number = 5;
+    version: number = 2;
+    outDir: string = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+    zipFiles: number = 0
+}
+
+/**
  * `_log()` is responsible for sending log messages to the Chromium Console.
  * @param message  The message to be sent to the console.
  */
@@ -64,7 +124,7 @@ function _error(message: string) {
 app.whenReady().then(() => {
     createWindow();
 
-    app.on('activate', function () {
+    app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
         // dock icon is clicked and there are no other windows open.
         if (BrowserWindow.getAllWindows().length === 0)
@@ -77,7 +137,7 @@ app.whenReady().then(() => {
  * On OS X it is common for applications and their menu bar
  * to stay active until the user quits explicitly with Cmd + Q.
  */
-app.on('window-all-closed', function () {
+app.on('window-all-closed', () => {
     // On macOS it is common for applications and their menu bar
     // to stay active until the user quits explicitly with Cmd + Q
     if (process.platform !== 'darwin')
@@ -90,9 +150,7 @@ app.on('window-all-closed', function () {
  * @param event  The inter-process communication sender of `__log__`.
  * @param message  The message to be sent to the console.
  */
-ipcMain.on('__log__', function (event, message: string) {
-    _log(message);
-});
+ipcMain.on('__log__', (event, message: string) => _log(message));
 
 /**
  * `__error__` is a inter-process communication channel for sending
@@ -100,16 +158,14 @@ ipcMain.on('__log__', function (event, message: string) {
  * @param event  The inter-process communication sender of `__error__`.
  * @param message  The message to be sent to the console.
  */
-ipcMain.on('__error__', function (event, error: string) {
-    _error(error);
-});
+ipcMain.on('__error__', (event, error: string) => _error(error));
 
 /**
  * `__cancelOperation__` is a inter-process communication channel for stopping
  * the current operation.
  * @param event  The inter-process communication sender of `__error__`.
  */
-ipcMain.on('__cancelOperation__', function (event) {
+ipcMain.on('__cancelOperation__', (event) => {
     // Integrate this IPC for canceling the beat map generation...
 });
 
@@ -120,7 +176,7 @@ ipcMain.on('__cancelOperation__', function (event) {
  * @param value  The current value of the progress bar.
  * @param maxValue  The maximum value of the progress bar.
  */
-ipcMain.on('__updateTaskProgress__', function (event, value: number, maxValue: number) {
+ipcMain.on('__updateTaskProgress__', (event, value: number, maxValue: number) => {
     mainWindow.webContents.send('task-progress', value, maxValue);
     if ((value / maxValue) < 1)
         mainWindow.setProgressBar(value / maxValue);
@@ -134,9 +190,7 @@ ipcMain.on('__updateTaskProgress__', function (event, value: number, maxValue: n
  * @param event  The inter-process communication sender of `__appendMessageTaskLog__`.
  * @param message  The message to be sent to the task log.
  */
-ipcMain.on('__appendMessageTaskLog__', function (event, message: string) {
-    mainWindow.webContents.send('task-log-append-message', message);
-});
+ipcMain.on('__appendMessageTaskLog__', (event, message: string) => mainWindow.webContents.send('task-log-append-message', message));
 
 /**
  * `__selectDirectory__` is a inter-process communication channel for opening
@@ -144,10 +198,10 @@ ipcMain.on('__appendMessageTaskLog__', function (event, message: string) {
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectDirectory__', function (event) {
+ipcMain.on('__selectDirectory__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
-        defaultPath: 'C:\\',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
         properties: ['openDirectory', 'multiSelections']
     };
 
@@ -167,10 +221,10 @@ ipcMain.on('__selectDirectory__', function (event) {
  * @param event  The inter-process communication sender of `__selectFiles__`.
  * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectFiles__', function (event) {
+ipcMain.on('__selectFiles__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select an audio file',
-        defaultPath: 'C:\\',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
         filters: [{
             name: 'Audio files', extensions: [ 'mp3', 'wav', 'flv', 'raw', 'ogg', 'egg' ] }],
         properties: ['openFile', 'multiSelections']
@@ -192,17 +246,17 @@ ipcMain.on('__selectFiles__', function (event) {
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectOutDirectory__', function (event) {
+ipcMain.on('__selectOutDirectory__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
-        defaultPath: 'C:\\',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
         properties: ['openDirectory']
     };
 
     dialog.showOpenDialog(mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
-                event.sender.send("selectOutDirectory-finished", dirs.filePaths);
+                event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
             }
         }).catch((err: string) => {
             _error(err);
@@ -210,136 +264,107 @@ ipcMain.on('__selectOutDirectory__', function (event) {
 });
 
 /**
+ * `countFilesInDir` is a function that recursively counts the files that match a filter in a directory.
+ * @param startPath The top-most level to start the search in.
+ * @param filter A regular expression filter to filter the search results.
+ * @returns An array of files found during the search.
+ */
+async function countFilesInDir(startPath: string, filter: RegExp) {
+    var results: string[] = [];
+    const files = fsx.readdirSync(startPath);
+    for (let i = 0; i < files.length; i++) {
+        const filename = path.join(startPath, files[i]);
+        const stat = fsx.lstatSync(filename);
+        if (stat.isDirectory()) {
+            results = results.concat(await countFilesInDir(filename, filter));
+        } else if (filter.test(filename)) {
+            results.push(filename);
+        }
+    }
+    return results;
+}
+
+/**
+ * `findFilesInDir` is a function that recursively searches the files that match a filter in a directory 
+ * and runs a callback on each file.
+ * @param startPath The top-most level to start the search in.
+ * @param filter A regular expression filter to filter the search results.
+ * @param callback A function to have run on each file.
+ */
+function findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
+    const files = fsx.readdirSync(startPath);
+    for (let i = 0; i < files.length; i++) {
+        const filename = path.join(startPath, files[i]);
+        const stat = fsx.lstatSync(filename);
+        if (stat.isDirectory()) {
+            findFilesInDir(filename, filter, callback);
+        } else if (filter.test(filename)) {
+            callback(filename);
+        }
+    }
+}
+
+/**
  * `__generateBeatMap__` is a inter-process communication channel for starting
  * the beat map generation.
  * @param event  The inter-process communication sender of `__generateBeatMap__`.
+ * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
  * @param dir  The path of the directory/file to generate the beat map from.
+ * @param difficulty  The difficulty to generate the beat map at.
+ * @param model The model to use for generating the beat map.
+ * @param k The number of song segments to use in a segmented model.
+ * @param version The version of data to use when using a HMM model.
+ * @param outDir The directory to put the output files.
  */
-ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: string, model: string, k: number = 5, version: number = 2, outDir: string = process.env.PORTABLE_EXECUTABLE_DIR) {
-    let pythonInternalPath = path.join(app.getAppPath().toString(), "build/python");
-    let scriptsInternalPath = path.join(app.getAppPath().toString(), "build/scripts");
-    let tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
+ipcMain.on('__generateBeatMap__', async function (event, opType: number, dir: string | string[], args: beatMapArgs) {
+    let totalCount = 0;
+    let currentCount = 0;
 
-    mainWindow.setProgressBar(0);
-    mainWindow.webContents.send('task-progress', 0, 4);
+    if (opType === 0) {
+        // Folders
+        if (typeof dir === 'string') {
+            // Single Folder
+            let newDir = await countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
+            totalCount = newDir.length;
+            dir = newDir;
+        }
+        else if (Array.isArray(dir)) {
+            // Multiple Folders
+            let newDir: string[];
+            dir.forEach(async (folder: string) => {
+                newDir.concat(await countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
+            });
+            totalCount = newDir.length;
+            dir = newDir;
+        }
+    }
+    else if (typeof dir === 'string') {
+        // Single File
+        let newDir = [dir];
+        totalCount = newDir.length;
+        dir = newDir;
+    }
 
-    fsx.copy(scriptsInternalPath, path.join(tempDir, 'scripts'))
-        .then(() => {
-            mainWindow.webContents.send('task-progress', 1, 4);
-            mainWindow.setProgressBar(.25);
+    totalCount += 2;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
 
-            // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
-            let updateFiles = false;
-            if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
-                updateFiles = true;
-            }
-            else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), app.getVersion().toString(), '<')) {
-                updateFiles = true;
-            }
+    let mainWorker = new workerWindow();
 
-            if (updateFiles) {
-                fsx.writeFileSync(path.join(tempDir, 'version.txt'), app.getVersion().toString());
-                fsx.copy(pythonInternalPath, path.join(tempDir, 'python')).then(() => {
-                    mainWindow.webContents.send('task-progress', 2, 4);
-                    mainWindow.setProgressBar(.50);
+    mainWorker.copyFiles();
+    currentCount += 1;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
 
-                    let options: Options = {
-                        mode: 'text',
-                        pythonPath: path.join(tempDir, "python/python.exe"),
-                        pythonOptions: ['-u']
-                    };
+    mainWorker.updatePython();
+    currentCount += 1;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
 
-                    PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { /* Callback not used */ })
-                        .on('message', function (message: string) {
-                            if (message)
-                                mainWindow.webContents.send('task-log-append-message', message);
-                        })
-                        .on('stderr', function (err: PythonShellError) {
-                            if (err)
-                                mainWindow.webContents.send('console-log', err);
-                        })
-                        .on('close', function () {
-                            mainWindow.webContents.send('task-progress', 3, 4);
-                            mainWindow.setProgressBar(.75);
-
-                            mm.parseFile(dir).then(metadata => {
-                                let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
-                                let trackname = metadata.common.title;
-                                let artistname = metadata.common.artist;
-                                for (var invalidchar of invalidchars) {
-                                    if (trackname.includes(invalidchar))
-                                        trackname.replace(invalidchar, '^');
-                                    if (artistname.includes(invalidchar))
-                                        artistname.replace(invalidchar, '^');
-                                }
-
-                                options.args = [
-                                    `${dir.normalize().replace(/\\/gi, "/")}`,
-                                    `${trackname} - ${artistname}`,
-                                    `${difficulty}`,
-                                    `${model}`,
-                                    '-k', k.toString(),
-                                    '--version', version.toString(),
-                                    '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
-                                    '--outDir', outDir.normalize().replace(/\\/gi, "/")
-                                ];
-                                PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { /* Callback not used */ })
-                                    .on('message', function (message: string) {
-                                        if (message && message != 'undefined' && message != null)
-                                            mainWindow.webContents.send('task-log-append-message', message);
-                                    })
-                                    .on('stderr', function (err: PythonShellError) {
-                                        if (err)
-                                            mainWindow.webContents.send('console-log', err);
-                                    })
-                                    .on('close', function () {
-                                        mainWindow.webContents.send('task-progress', 4, 4);
-                                        mainWindow.setProgressBar(1);
-                                        mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
-                                    });
-                            });
-                        });
-                });
-            }
-            else {
-                mainWindow.webContents.send('task-progress', 2, 4);
-                mainWindow.setProgressBar(.50);
-
-                let options: Options = {
-                    mode: 'text',
-                    pythonPath: path.join(tempDir, "python/python.exe"),
-                    pythonOptions: ['-u']
-                };
-
-                mainWindow.webContents.send('task-progress', 3, 4);
-                mainWindow.setProgressBar(.75);
-
-                mm.parseFile(dir).then(metadata => {
-                    options.args = [
-                        `${dir.normalize().replace(/\\/gi, "/")}`,
-                        `${metadata.common.title} - ${metadata.common.artist}`,
-                        `${difficulty}`,
-                        `${model}`,
-                        '-k', k.toString(),
-                        '--version', version.toString(),
-                        '--workingDir', tempDir.normalize().replace(/\\/gi, "/"),
-                        '--outDir', outDir.normalize().replace(/\\/gi, "/")
-                    ];
-                    PythonShell.run(path.join(tempDir, '/scripts/beatmapsynth.py'), options, function (err, out) { /* Callback not used */ })
-                        .on('message', function (message: string) {
-                            if (message && message != 'undefined' && message != null)
-                                mainWindow.webContents.send('task-log-append-message', message);
-                        })
-                        .on('stderr', function (err: PythonShellError) {
-                            if (err)
-                                mainWindow.webContents.send('console-log', err);
-                        })
-                        .on('close', function () {
-                            mainWindow.webContents.send('task-progress', 4, 4);
-                            mainWindow.setProgressBar(1);
-                            mainWindow.webContents.send('task-log-append-message', 'Beat Map Complete!');
-                        });
-                });
-            }
-        });
+    dir.forEach((file: string) => {
+        if (currentCount < totalCount) {
+            mainWorker.generateBeatMaps(file, args);
+            currentCount += 1;
+            event.sender.send('__updateTaskProgress__', currentCount, totalCount);
+        }
+    });
+    event.sender.send('task-log-append-message', 'Beat Map Complete!');
+    mainWorker.close();
 });

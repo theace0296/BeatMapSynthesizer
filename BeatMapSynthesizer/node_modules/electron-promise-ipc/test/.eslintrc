@@ -1,0 +1,14 @@
+{
+  "env": {
+    "mocha": true
+  },
+  "rules": {
+    "@typescript-eslint/no-explicit-any": 1,
+    "import/no-extraneous-dependencies": [
+      2,
+      {
+        "devDependencies": true
+      }
+    ]
+  }
+}

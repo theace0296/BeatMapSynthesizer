@@ -37,7 +37,7 @@ outDir = the directory to put the output zip file in
 ***
 """
 class Main:
-    def __init__(self, song_path, song_name, difficulty, model, k, version, outDir):
+    def __init__(self, song_path, song_name, difficulty, model, k, version, outDir, zipFiles):
         self.song_path = song_path
         if song_name is None:
             song_name = self.getSongNameFromMetadata()
@@ -51,6 +51,7 @@ class Main:
             version = 2
         self.version = version
         self.outDir = outDir
+        self.zipFiles = zipFiles
         self.workingDir = f"{self.outDir}/{self.song_name}"
         if not os.path.exists(self.workingDir):
             os.makedirs(self.workingDir)
@@ -270,18 +271,19 @@ class Main:
     def zipFiles(self):
         "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
         shutil.copy('cover.jpg', f"{self.workingDir}")
-        files = [ f"{self.workingDir}/info.dat", f"{self.workingDir}/cover.jpg", f"{self.workingDir}/song.egg" ]
-        if self.difficulty.casefold() == 'ALL'.casefold():
-            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
-                files.append(f"{self.workingDir}/{diff}.dat")
-        else:
-            files.append(f"{self.workingDir}/{self.difficulty}.dat")
-        with ZipFile(f"{self.outDir}/{self.song_name}.zip", 'w') as custom:
+        if self.zipFiles:
+            files = [ f"{self.workingDir}/info.dat", f"{self.workingDir}/cover.jpg", f"{self.workingDir}/song.egg" ]
+            if self.difficulty.casefold() == 'ALL'.casefold():
+                for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
+                    files.append(f"{self.workingDir}/{diff}.dat")
+            else:
+                files.append(f"{self.workingDir}/{self.difficulty}.dat")
+            with ZipFile(f"{self.outDir}/{self.song_name}.zip", 'w') as custom:
+                for file in files:
+                    custom.write(file, arcname=os.path.basename(file))
             for file in files:
-                custom.write(file, arcname=os.path.basename(file))
-        for file in files:
-            os.remove(file)
-        os.rmdir(self.workingDir)
+                os.remove(file)
+            os.rmdir(self.workingDir)
 
     def getBeatFeatures(self):
         """This function takes in the song stored at 'song_path' and estimates the bpm and beat times."""
@@ -784,6 +786,7 @@ if __name__ == '__main__':
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
     parser.add_argument('--workingDir', type=str, help="Directory of scripts folder (this is automatically done, do not use this argument!)", required=True)
     parser.add_argument('--outDir', type=str, help="Directory to save outputed files to. Default is the current directory.", required=False)
+    parser.add_argument('--zipFiles', type=int, help="Boolean to zip output files.", default=0, required=False)
 
     args = parser.parse_args()
     
@@ -798,8 +801,9 @@ if __name__ == '__main__':
     testFile.write(f"K: {args.k}\n")
     testFile.write(f"Version: {args.version}\n")
     testFile.write(f"Out Directory: {args.outDir}\n")
+    testFile.write(f"Zip Files: {args.zipFiles}\n")
     testFile.close()
     
-    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.outDir)
+    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.outDir, args.zipFiles)
     main.generateBeatMap()
     

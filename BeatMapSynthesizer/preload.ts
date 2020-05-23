@@ -1,17 +1,27 @@
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 import { ipcRenderer } from "electron";
+import { beatMapArgs } from "./app.js";
+
+let args: beatMapArgs;
 
 let selectedDirs: string[] = [];
-let selectedDiff: string = 'all';
-let selectedModel: string = 'random';
-let selectedOutDir: string = process.env.PORTABLE_EXECUTABLE_DIR;
+args.difficulty = 'all';
+args.model = 'random';
+args.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+
+class operationType {
+    static directory: number = 0;
+    static files: number = 1;
+}
+var currentOperationType: number = operationType.files;
 
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFilesButton').addEventListener('click', () => {
         if (document.getElementById('dirsfilesList').innerHTML !== "") {
             document.getElementById('dirsfilesList').innerHTML = "";
         }
+        currentOperationType = operationType.files;
         ipcRenderer.send('__selectFiles__');
     });
 
@@ -19,6 +29,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('dirsfilesList').innerHTML !== "") {
             document.getElementById('dirsfilesList').innerHTML = "";
         }
+        currentOperationType = operationType.directory;
         ipcRenderer.send('__selectDirectory__');
     });
 
@@ -30,44 +41,40 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('difficultylist').addEventListener('change', () => {
-        selectedDiff = (document.getElementById('difficultylist') as HTMLSelectElement).value.toString();
+        args.difficulty = (document.getElementById('difficultylist') as HTMLSelectElement).value.toString();
     });
 
     document.getElementById('modellist').addEventListener('change', () => {
-        selectedModel = (document.getElementById('modellist') as HTMLSelectElement).value.toString();
+        args.model = (document.getElementById('modellist') as HTMLSelectElement).value.toString();
     });
 
     document.getElementById('generateBeatMapButton').addEventListener('click', () => {
         if (document.getElementById('taskLog').innerHTML !== "") {
             document.getElementById('taskLog').innerHTML = "";
         }
-        for (var selectedDir of selectedDirs) {
-            ipcRenderer.send('__generateBeatMap__', selectedDir, selectedDiff, selectedModel, 5, 2, selectedOutDir);
-        }
+        args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;
+        ipcRenderer.send('__generateBeatMap__', currentOperationType, selectedDirs, args);
     });
 
     document.getElementById('cancelButton').addEventListener('click', () => {
         ipcRenderer.send('__cancelOperation__');
     });
 
-    document.getElementById('outputDirList').appendChild(document.createElement('li').appendChild(document.createTextNode(selectedOutDir)));
+    document.getElementById('outputDirList').appendChild(document.createElement('li').appendChild(document.createTextNode(args.outDir)));
 })
 
-ipcRenderer.on('console-log', (event, message: string) => {
-    console.log(message);
-});
+ipcRenderer.on('console-log', (event, message: string) => console.log(message));
 
-ipcRenderer.on('console-error', (event, message: string) => {
-    console.error(message);
-});
+ipcRenderer.on('console-error', (event, message: string) => console.error(message));
 
 
 ipcRenderer.on('task-progress', (event, value: number, maxValue: number) => {
     if (value === 0) {
-        document.getElementById('taskProgressBar').innerHTML = `${(value / maxValue) * 100}%`;
+        document.getElementById('taskProgressBar').innerHTML = `$0%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 0%;`);
     }
     else if (value === -1) {
+        document.getElementById('taskProgressBar').innerHTML = `$100%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 100%;`);
     }
     else if ((value / maxValue) <= .10) {
@@ -80,31 +87,25 @@ ipcRenderer.on('task-progress', (event, value: number, maxValue: number) => {
     }
 });
 
-ipcRenderer.on('task-log-append-message', (event, message: string) => {
-    document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n'));
-});
+ipcRenderer.on('task-log-append-message', (event, message: string) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
 
 ipcRenderer.on('selectFilesDirs-finished', (event, param: string[]) => {
     selectedDirs.length = 0;
-    for (var i = 0; i < param.length; i++) {
+    param.forEach((value: string) => {
         // Append filename to varaible
-        selectedDirs.push(param[i]);
-        // Create the list item:
-        var item = document.createElement('li');
-        // Set its contents:
-        item.appendChild(document.createTextNode(param[i]));
+        selectedDirs.push(value);
+        // Create the list item and set its contents
+        let item = document.createElement('li').appendChild(document.createTextNode(value));
         // Add it to the list:
         document.getElementById('dirsfilesList').appendChild(item);
-    }
+    });
 });
 
-ipcRenderer.on('selectOutDirectory-finished', (event, param: string[]) => {
+ipcRenderer.on('selectOutDirectory-finished', (event, param: string) => {
     // Append filename to varaible
-    selectedOutDir = param[0];
-    // Create the list item:
-    var item = document.createElement('li');
-    // Set its contents:
-    item.appendChild(document.createTextNode(param[0]));
+    args.outDir = param;
+    // Create the list item and set its contents
+    let item = document.createElement('li').appendChild(document.createTextNode(param));
     // Add it to the list:
     document.getElementById('outputDirList').appendChild(item);
 });
