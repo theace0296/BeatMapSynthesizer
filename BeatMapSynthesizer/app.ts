@@ -254,6 +254,10 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                             if (message)
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
+                        .on('stderr', function (err: PythonShellError) {
+                            // if (err)
+                                // mainWindow.webContents.send('task-log-append-message', err);
+                        })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 3, 4);
                             mainWindow.setProgressBar(.75);
@@ -283,6 +287,10 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                     .on('message', function (message: string) {
                                         if (message && message != 'undefined' && message != null)
                                             mainWindow.webContents.send('task-log-append-message', message);
+                                    })
+                                    .on('stderr', function (err: PythonShellError) {
+                                        // if (err)
+                                            // mainWindow.webContents.send('task-log-append-message', err);
                                     })
                                     .on('close', function () {
                                         mainWindow.webContents.send('task-progress', 4, 4);
@@ -323,8 +331,8 @@ ipcMain.on('__generateBeatMap__', function (event, dir: string, difficulty: stri
                                 mainWindow.webContents.send('task-log-append-message', message);
                         })
                         .on('stderr', function (err: PythonShellError) {
-                            if (err)
-                                mainWindow.webContents.send('task-log-append-message', err);
+                            // if (err)
+                                // mainWindow.webContents.send('task-log-append-message', err);
                         })
                         .on('close', function () {
                             mainWindow.webContents.send('task-progress', 4, 4);

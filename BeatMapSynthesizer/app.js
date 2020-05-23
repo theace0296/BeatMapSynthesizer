@@ -229,6 +229,10 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                     if (message)
                         mainWindow.webContents.send('task-log-append-message', message);
                 })
+                    .on('stderr', function (err) {
+                    // if (err)
+                    // mainWindow.webContents.send('task-log-append-message', err);
+                })
                     .on('close', function () {
                     mainWindow.webContents.send('task-progress', 3, 4);
                     mainWindow.setProgressBar(.75);
@@ -256,6 +260,10 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                             .on('message', function (message) {
                             if (message && message != 'undefined' && message != null)
                                 mainWindow.webContents.send('task-log-append-message', message);
+                        })
+                            .on('stderr', function (err) {
+                            // if (err)
+                            // mainWindow.webContents.send('task-log-append-message', err);
                         })
                             .on('close', function () {
                             mainWindow.webContents.send('task-progress', 4, 4);
@@ -293,8 +301,8 @@ electron_1.ipcMain.on('__generateBeatMap__', function (event, dir, difficulty, m
                         mainWindow.webContents.send('task-log-append-message', message);
                 })
                     .on('stderr', function (err) {
-                    if (err)
-                        mainWindow.webContents.send('task-log-append-message', err);
+                    // if (err)
+                    // mainWindow.webContents.send('task-log-append-message', err);
                 })
                     .on('close', function () {
                     mainWindow.webContents.send('task-progress', 4, 4);
