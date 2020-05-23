@@ -15,6 +15,7 @@ import sklearn.cluster
 import scipy
 import sys
 import argparse
+import shutil
 
 """
 Class to load a music file and generate a custom Beat Saber map based on the specified model and difficulty. Outputs a zipped folder of necessary files to play the custom map in the Beat Saber game.
@@ -275,10 +276,11 @@ class Main:
                 files.append(f"{self.workingDir}/{diff}.dat")
         else:
             files.append(f"{self.workingDir}/{self.difficulty}.dat")
-        with ZipFile(f"{self.outDir}/{song_name}.zip", 'w') as custom:
+        with ZipFile(f"{self.outDir}/{self.song_name}.zip", 'w') as custom:
             for file in files:
-                custom.write(file)
-                # os.remove(file)
+                custom.write(file, arcname=os.path.basename(file))
+                os.remove(file)
+        os.rmdir(self.workingDir)
 
     def getBeatFeatures(self):
         """This function takes in the song stored at 'song_path' and estimates the bpm and beat times."""

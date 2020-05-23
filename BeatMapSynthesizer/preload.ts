@@ -3,7 +3,7 @@
 import { ipcRenderer } from "electron";
 
 let selectedDirs: string[] = [];
-let selectedDiff: string = 'hard';
+let selectedDiff: string = 'all';
 let selectedModel: string = 'rate_modulated_segmented_HMM';
 let selectedOutDir: string = process.env.PORTABLE_EXECUTABLE_DIR;
 

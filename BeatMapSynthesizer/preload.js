@@ -4,7 +4,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // It has the same sandbox as a Chrome extension.
 const electron_1 = require("electron");
 let selectedDirs = [];
-let selectedDiff = 'hard';
+let selectedDiff = 'all';
 let selectedModel = 'rate_modulated_segmented_HMM';
 let selectedOutDir = process.env.PORTABLE_EXECUTABLE_DIR;
 window.addEventListener('DOMContentLoaded', () => {
