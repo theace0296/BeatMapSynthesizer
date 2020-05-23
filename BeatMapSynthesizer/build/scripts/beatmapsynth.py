@@ -17,40 +17,6 @@ import sys
 import argparse
 
 """
-Class to hold data for a given song and difficulties
-***
-song_path = string file path to music file location
-    
-song_name = string to name level as it will appear in the game
-    
-difficulty = desired difficulty level, can be: 'easy', 'normal', 'hard', 'expert', 'expertPlus', or 'all'
-***
-"""
-class Tracks:
-    def __init__(self, song_path, song_name, difficulty):
-        self.song_path = song_path
-        self.song_name = song_name
-        self.difficulty = difficulty
-
-        _baseLists = {
-                'events_list': [],
-                'notes_list': [],
-                'obstacles_list': [],
-                'modulated_beat_list': []
-            }
-
-        self.data = {
-                    'bpm': 0,
-                    'beat_times': [],
-                    'y': 0,
-                    'sr': 0,
-                    'easy': _baseLists,
-                    'normal': _baseLists,
-                    'hard': _baseLists,
-                    'expert': _baseLists,
-                    'expertPlus': _baseLists
-                }
-"""
 Class to load a music file and generate a custom Beat Saber map based on the specified model and difficulty. Outputs a zipped folder of necessary files to play the custom map in the Beat Saber game.
     
 ***
@@ -58,7 +24,7 @@ song_path = string file path to music file location
     
 song_name = string to name level as it will appear in the game
     
-difficulty = desired difficulty level, can be: 'easy', 'normal', 'hard', 'expert', 'expertPlus', or 'all'
+difficulty = desired difficulty level, can be: 'easy', 'normal', 'hard', 'expert', 'expertplus', or 'all'
     
 model = desired model to use for map generation, can be: 'random', 'HMM', 'segmented_HMM', or 'rate_modulated_segmented_HMM'
     
@@ -84,10 +50,45 @@ class Main:
             version = 2
         self.version = version
         self.outDir = outDir
-        self.workingDir = f"./working_dir/{self.song_name}"
+        self.workingDir = f"{self.outDir}/{self.song_name}"
         if not os.path.exists(self.workingDir):
             os.makedirs(self.workingDir)
-        self.tracks = Tracks()
+        self.tracks = {
+                    'bpm': 0,
+                    'beat_times': [],
+                    'y': 0,
+                    'sr': 0,
+                    'easy': {
+                        'events_list': [],
+                        'notes_list': [],
+                        'obstacles_list': [],
+                        'modulated_beat_list': []
+                    },
+                    'normal': {
+                        'events_list': [],
+                        'notes_list': [],
+                        'obstacles_list': [],
+                        'modulated_beat_list': []
+                    },
+                    'hard': {
+                        'events_list': [],
+                        'notes_list': [],
+                        'obstacles_list': [],
+                        'modulated_beat_list': []
+                    },
+                    'expert': {
+                        'events_list': [],
+                        'notes_list': [],
+                        'obstacles_list': [],
+                        'modulated_beat_list': []
+                    },
+                    'expertplus': {
+                        'events_list': [],
+                        'notes_list': [],
+                        'obstacles_list': [],
+                        'modulated_beat_list': []
+                    }
+                }
 
     def getListOfFilesInDirectory(self, path):
         # Create a list of file and sub directories 
@@ -138,19 +139,19 @@ class Main:
         difficulty_beatmaps_array = []
     
         easy_beatmaps_df = { 
-        '_difficulty': 'Easy', '_difficultyRank': 1, '_beatmapFilename': "Easy.dat", '_noteJumpMovementSpeed': 8, '_noteJumpStartBeatOffset': 0, '_customData': {} 
+        '_difficulty': 'Easy', '_difficultyRank': 1, '_beatmapFilename': "easy.dat", '_noteJumpMovementSpeed': 8, '_noteJumpStartBeatOffset': 0, '_customData': {} 
         }
         normal_beatmaps_df = { 
-        '_difficulty': 'Normal', '_difficultyRank': 3, '_beatmapFilename': "Normal.dat", '_noteJumpMovementSpeed': 10, '_noteJumpStartBeatOffset': 0, '_customData': {} 
+        '_difficulty': 'Normal', '_difficultyRank': 3, '_beatmapFilename': "normal.dat", '_noteJumpMovementSpeed': 10, '_noteJumpStartBeatOffset': 0, '_customData': {} 
         }
         hard_beatmaps_df = {
-        '_difficulty': 'Hard', '_difficultyRank': 5, '_beatmapFilename': "Hard.dat", '_noteJumpMovementSpeed': 12, '_noteJumpStartBeatOffset': 0, '_customData': {}
+        '_difficulty': 'Hard', '_difficultyRank': 5, '_beatmapFilename': "hard.dat", '_noteJumpMovementSpeed': 12, '_noteJumpStartBeatOffset': 0, '_customData': {}
         }
         expert_beatmaps_df = {
-        '_difficulty': 'Expert', '_difficultyRank': 7, '_beatmapFilename': "Expert.dat", '_noteJumpMovementSpeed': 14, '_noteJumpStartBeatOffset': 0, '_customData': {}
+        '_difficulty': 'Expert', '_difficultyRank': 7, '_beatmapFilename': "expert.dat", '_noteJumpMovementSpeed': 14, '_noteJumpStartBeatOffset': 0, '_customData': {}
         }
-        expertPlus_beatmaps_df = {
-        '_difficulty': 'ExpertPlus', '_difficultyRank': 9, '_beatmapFilename': "ExpertPlus.dat", '_noteJumpMovementSpeed': 16, '_noteJumpStartBeatOffset': 0, '_customData': {}
+        expertplus_beatmaps_df = {
+        '_difficulty': 'ExpertPlus', '_difficultyRank': 9, '_beatmapFilename': "expertplus.dat", '_noteJumpMovementSpeed': 16, '_noteJumpStartBeatOffset': 0, '_customData': {}
         }
 
         if self.difficulty.casefold() == 'easy'.casefold():
@@ -169,9 +170,9 @@ class Main:
             difficulty_beatmaps_array = [
             expert_beatmaps_df
             ]
-        elif self.difficulty.casefold() == 'expertPlus'.casefold():
+        elif self.difficulty.casefold() == 'expertplus'.casefold():
             difficulty_beatmaps_array = [
-            expertPlus_beatmaps_df
+            expertplus_beatmaps_df
             ]
         elif self.difficulty.casefold() == 'all'.casefold():
             difficulty_beatmaps_array = [
@@ -179,7 +180,7 @@ class Main:
             normal_beatmaps_df,
             hard_beatmaps_df,
             expert_beatmaps_df,
-            expertPlus_beatmaps_df
+            expertplus_beatmaps_df
             ]
 
         info = {'_version': '2.0.0',
@@ -206,7 +207,7 @@ class Main:
     def writeLevelFile(self):
         """This function creates the 'level.dat' file that contains all the data for that paticular difficulty level"""
         if self.difficulty.casefold() == 'ALL'.casefold():
-            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertPlus' ]:
+            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 level = {
                  '_version': '2.0.0',
                  '_customData': {'_time': '', #not sure what time refers to 
@@ -245,7 +246,7 @@ class Main:
         else:
             print("Unsupported song file type. Choose a file of type .mp3, .wav, .flv, .raw, or .ogg.")
 
-    def eventsWriter(self):
+    def eventsWriter(self, difficulty):
         """Placeholder function for writing a list of events to be incorporated into a beatmap file. May have future support."""
         if self.model == 'rate_modulated_segmented_HMM':
             # Use self.tracks[diff.casefold()]['modulated_beat_list']
@@ -255,7 +256,7 @@ class Main:
             events_list = []
             return events_list
 
-    def obstaclesWriter(self):
+    def obstaclesWriter(self, difficulty):
         """Placeholder function for writing a list of obstacles to be incorporated into a beatmap file."""
         if self.model == 'rate_modulated_segmented_HMM':
             # Use self.tracks[diff.casefold()]['modulated_beat_list']
@@ -267,18 +268,17 @@ class Main:
 
     def zipFiles(self):
         "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
-        files = [ f"{self.workingDir}/info.dat", 'cover.jpg', f"{self.workingDir}/song.egg" ]
+        shutil.copy('cover.jpg', f"{self.workingDir}")
+        files = [ f"{self.workingDir}/info.dat", f"{self.workingDir}/cover.jpg", f"{self.workingDir}/song.egg" ]
         if self.difficulty.casefold() == 'ALL'.casefold():
-            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertPlus' ]:
+            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 files.append(f"{self.workingDir}/{diff}.dat")
         else:
             files.append(f"{self.workingDir}/{self.difficulty}.dat")
-        with ZipFile(f"{outDir}/{song_name}.zip", 'w') as custom:
+        with ZipFile(f"{self.outDir}/{song_name}.zip", 'w') as custom:
             for file in files:
                 custom.write(file)
-        for file in files:
-            if file != 'cover.jpg':
-                os.remove(file)
+                # os.remove(file)
 
     def getBeatFeatures(self):
         """This function takes in the song stored at 'song_path' and estimates the bpm and beat times."""
@@ -299,7 +299,7 @@ class Main:
         #Write lists for note placement, event placement, and obstacle placement
         print("Mapping...")
         if self.difficulty.casefold() == 'ALL'.casefold():
-            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertPlus' ]:
+            for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 self.tracks[diff.casefold()]['notes_list'] = self.runModel(diff.casefold()) #fixes _time != beat time
                 self.tracks[diff.casefold()]['events_list'] = self.eventsWriter(diff.casefold())
                 self.tracks[diff.casefold()]['obstacles_list'] = self.obstaclesWriter(diff.casefold())
@@ -448,19 +448,19 @@ class Main:
         """This function uses the Laplacian Segmentation method described in McFee and Ellis, 2014, and adapted from example code in the librosa documentation. It returns the segment boundaries (in frame number and time and segment ID's of isolated music file segments."""
         BINS_PER_OCTAVE = 12 * 3
         N_OCTAVES = 7
-        C = librosa.amplitude_to_db(np.abs(librosa.cqt(y=self.y, sr=self.sr, bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE)), ref=np.max)
-        tempo, beats = librosa.beat.beat_track(y=self.y, sr=self.sr, trim=False)
+        C = librosa.amplitude_to_db(np.abs(librosa.cqt(y=self.tracks['y'], sr=self.tracks['sr'], bins_per_octave=BINS_PER_OCTAVE, n_bins=N_OCTAVES * BINS_PER_OCTAVE)), ref=np.max)
+        tempo, beats = librosa.beat.beat_track(y=self.tracks['y'], sr=self.tracks['sr'], trim=False)
         Csync = librosa.util.sync(C, beats, aggregate=np.median)
 
         # For plotting purposes, we'll need the timing of the beats
         # we fix_frames to include non-beat frames 0 and C.shape[1] (final frame)
-        beat_times = librosa.frames_to_time(librosa.util.fix_frames(beats, x_min=0, x_max=C.shape[1]), sr=self.sr)
+        beat_times = librosa.frames_to_time(librosa.util.fix_frames(beats, x_min=0, x_max=C.shape[1]), sr=self.tracks['sr'])
     
         R = librosa.segment.recurrence_matrix(Csync, width=3, mode='affinity', sym=True)
         # Enhance diagonals with a median filter (Equation 2)
         df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
         Rf = df(R, size=(1, 7))
-        mfcc = librosa.feature.mfcc(y=self.y, sr=self.sr)
+        mfcc = librosa.feature.mfcc(y=self.tracks['y'], sr=self.tracks['sr'])
         Msync = librosa.util.sync(mfcc, beats)
         path_distance = np.sum(np.diff(Msync, axis=1)**2, axis=0)
         sigma = np.median(path_distance)
@@ -482,7 +482,7 @@ class Main:
         # Fun exercise: see how the segmentation changes as you vary k
         self.k = self.k
         X = evecs[:, :self.k] / Cnorm[:, self.k-1:self.k]
-        KM = sklearn.cluster.KMeans(n_clusters=k)
+        KM = sklearn.cluster.KMeans(n_clusters=self.k)
         seg_ids = KM.fit_predict(X)
         bound_beats = 1 + np.flatnonzero(seg_ids[:-1] != seg_ids[1:])
         # Count beat 0 as a boundary
@@ -636,7 +636,7 @@ class Main:
                 p = [0, 0.05, 0.6, 0.35, 0, 0]
             else:
                 p = [0, 0, 0.35, 0.65, 0, 0]
-        elif difficulty.casefold() == 'expertPlus'.casefold():
+        elif difficulty.casefold() == 'expertplus'.casefold():
             if db > 70:
                 p = [0, 0.5, 0.4, 0.1, 0, 0]
             elif db <= 70 and db > 55:
@@ -653,10 +653,10 @@ class Main:
         """This function uses the average amplitude (i.e., 'loudness') of a beat and the difficulty level to determine 
         how many blocks will be placed within the beat. Returns a list of beat numbers."""
         #Make amplitude matrix
-        D = np.abs(librosa.stft(self.y))
+        D = np.abs(librosa.stft(self.tracks['y']))
         db = librosa.amplitude_to_db(D, ref=np.max)
         #Get beat frames and sync with amplitudes
-        tempo, beat_frames = librosa.beat.beat_track(self.y, self.sr, trim = False)
+        tempo, beat_frames = librosa.beat.beat_track(self.tracks['y'], self.tracks['sr'], trim = False)
         beat_db = pd.DataFrame(librosa.util.sync(db, beat_frames, aggregate = np.mean))
         #Mean amplitude per beat
         avg_beat_db = beat_db.mean()
@@ -666,7 +666,7 @@ class Main:
         while counter < len(avg_beat_db)-1:
             rate = self.chooseRate(np.mean([avg_beat_db.iloc[counter-1], avg_beat_db.iloc[counter], avg_beat_db.iloc[counter+1]]), difficulty)
             diff = np.abs(rate - rates[-1])
-            if difficulty.casefold() == 'expert'.casefold() or difficulty.casefold() == 'expertPlus'.casefold():
+            if difficulty.casefold() == 'expert'.casefold() or difficulty.casefold() == 'expertplus'.casefold():
                 maxdiff = 4
             else:
                 maxdiff = 2
@@ -736,7 +736,7 @@ class Main:
                 MC = pickle.load(m)
         segments, beat_times, tempo = self.laplacianSegmentation()
         self.tracks[difficulty.casefold()]['modulated_beat_list'] = self.amplitudeRateModulation(difficulty)
-        segments_df = self.segmentsToDataFrameRateModulated(segments)
+        segments_df = self.segmentsToDataFrameRateModulated(segments, difficulty)
         preds = self.segmentPredictions(segments_df, MC)
         #Combine beat numbers with HMM walk steps
         beat_times = [ ( x / 60 ) * tempo for x in beat_times ]
@@ -775,7 +775,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('song_path', metavar='path', type=str, help='File Path to song file')
     parser.add_argument('song_name', type=str, help='Name of song to be displayed in Beat Saber')
-    parser.add_argument('difficulty', type=str, help="Desired difficulty level: 'easy', 'normal', 'hard', 'expert', or 'expertPlus'")
+    parser.add_argument('difficulty', type=str, help="Desired difficulty level: 'easy', 'normal', 'hard', 'expert', 'expertplus', or 'all'")
     parser.add_argument('model', type=str, help="Desired model for mapping: 'random', 'HMM', 'segmented_HMM', 'rate_modulated_segmented_HMM'")
     parser.add_argument('-k', type=int, help="Number of expected segments for segmented model. Default 5", default=5, required=False)
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
