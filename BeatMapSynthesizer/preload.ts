@@ -1,7 +1,29 @@
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
-import { ipcRenderer } from "electron";
-import { beatMapArgs } from "./app.js";
+import { ipcRenderer, remote } from "electron";
+/**
+ * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+class beatMapArgs {
+    dir: string;
+    difficulty: string;
+    model: string;
+    k: number;
+    version: number;
+    outDir: string;
+    zipFiles: number;
+
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+        this.zipFiles = 0;
+        return this;
+    }
+}
 
 let args: beatMapArgs = new beatMapArgs();
 

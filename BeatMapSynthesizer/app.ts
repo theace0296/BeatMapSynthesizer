@@ -10,6 +10,33 @@ import * as fsx from 'fs-extra';
 let mainWindow: Electron.BrowserWindow;
 
 /**
+ * This method will be called when Electron has finished
+ * initialization and is ready to create browser windows.
+ * Some APIs can only be used after this event occurs.
+ */
+app.on('ready', () => {
+    createMainWindow();
+    app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (BrowserWindow.getAllWindows().length === 0)
+            createMainWindow();
+    })
+})
+
+/**
+ * Quit when all windows are closed.
+ * On OS X it is common for applications and their menu bar
+ * to stay active until the user quits explicitly with Cmd + Q.
+ */
+app.on('window-all-closed', () => {
+    // On macOS it is common for applications and their menu bar
+    // to stay active until the user quits explicitly with Cmd + Q
+    if (process.platform !== 'darwin')
+        app.quit();
+})
+
+/**
  * `createMainWindow()` is responsible for the initial creation of the main window.
  */
 function createMainWindow() {
@@ -19,7 +46,7 @@ function createMainWindow() {
         height: 600,
         autoHideMenuBar: true,
         webPreferences: {
-            preload: path.join(app.getAppPath().toString(), "preload.js")
+            preload: path.join(app.getAppPath(), 'preload.js')
         }
     });
 
@@ -53,7 +80,7 @@ class workerWindow {
             show: false,
             autoHideMenuBar: true,
             webPreferences: {
-                preload: path.join(app.getAppPath().toString(), "worker.js")
+                preload: path.join(app.getAppPath(), 'worker.js')
             }
         });
 
@@ -92,7 +119,7 @@ class workerWindow {
 /**
  * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
-export class beatMapArgs {
+class beatMapArgs {
     dir: string;
     difficulty: string;
     model: string;
@@ -128,34 +155,6 @@ function _log(message: string) {
 function _error(message: string) {
     mainWindow.webContents.send('console-error', message);
 }
-
-/**
- * This method will be called when Electron has finished
- * initialization and is ready to create browser windows.
- * Some APIs can only be used after this event occurs.
- */
-app.whenReady().then(() => {
-    createMainWindow();
-
-    app.on('activate', () => {
-        // On macOS it's common to re-create a window in the app when the
-        // dock icon is clicked and there are no other windows open.
-        if (BrowserWindow.getAllWindows().length === 0)
-            createMainWindow();
-    })
-})
-
-/**
- * Quit when all windows are closed.
- * On OS X it is common for applications and their menu bar
- * to stay active until the user quits explicitly with Cmd + Q.
- */
-app.on('window-all-closed', () => {
-    // On macOS it is common for applications and their menu bar
-    // to stay active until the user quits explicitly with Cmd + Q
-    if (process.platform !== 'darwin')
-        app.quit();
-})
 
 /**
  * `__log__` is a inter-process communication channel for sending
@@ -329,7 +328,7 @@ function findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
  * @param version The version of data to use when using a HMM model.
  * @param outDir The directory to put the output files.
  */
-ipcMain.on('__generateBeatMap__', async function (event, opType: number, dir: string | string[], args: beatMapArgs) {
+ipcMain.on('__generateBeatMap__', async (event, opType: number, dir: string | string[], args: beatMapArgs) => {
     let totalCount = 0;
     let currentCount = 0;
 
@@ -363,17 +362,17 @@ ipcMain.on('__generateBeatMap__', async function (event, opType: number, dir: st
 
     let mainWorker = new workerWindow();
 
-    mainWorker.copyFiles();
+    await mainWorker.copyFiles();
     currentCount += 1;
     event.sender.send('__updateTaskProgress__', currentCount, totalCount);
 
-    mainWorker.updatePython();
+    await mainWorker.updatePython();
     currentCount += 1;
     event.sender.send('__updateTaskProgress__', currentCount, totalCount);
 
-    dir.forEach((file: string) => {
+    dir.forEach( async (file: string) => {
         if (currentCount < totalCount) {
-            mainWorker.generateBeatMaps(file, args);
+            await mainWorker.generateBeatMaps(file, args);
             currentCount += 1;
             event.sender.send('__updateTaskProgress__', currentCount, totalCount);
         }

@@ -19,8 +19,23 @@ const python_shell_1 = require("python-shell");
 const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
-let pythonInternalPath = path.join(electron_1.app.getAppPath().toString(), "build/python");
-let scriptsInternalPath = path.join(electron_1.app.getAppPath().toString(), "build/scripts");
+/**
+ * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+class beatMapArgs {
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+        this.zipFiles = 0;
+        return this;
+    }
+}
+let pythonInternalPath = path.join(electron_1.remote.app.getAppPath().toString(), "build/python");
+let scriptsInternalPath = path.join(electron_1.remote.app.getAppPath().toString(), "build/scripts");
 let tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
 let options = {
     mode: 'text',
@@ -34,11 +49,11 @@ electron_promise_ipc_1.default.on('worker-copy-files', (event) => __awaiter(void
     if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
         updateFiles = true;
     }
-    else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), electron_1.app.getVersion().toString(), '<')) {
+    else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), electron_1.remote.app.getVersion().toString(), '<')) {
         updateFiles = true;
     }
     if (updateFiles) {
-        yield fsx.writeFile(path.join(tempDir, 'version.txt'), electron_1.app.getVersion().toString());
+        yield fsx.writeFile(path.join(tempDir, 'version.txt'), electron_1.remote.app.getVersion().toString());
         yield fsx.copy(pythonInternalPath, path.join(tempDir, 'python'));
     }
     return true;

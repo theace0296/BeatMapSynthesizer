@@ -3,8 +3,22 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 const electron_1 = require("electron");
-const app_js_1 = require("./app.js");
-let args = new app_js_1.beatMapArgs();
+/**
+ * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+class beatMapArgs {
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+        this.zipFiles = 0;
+        return this;
+    }
+}
+let args = new beatMapArgs();
 let selectedDirs = [];
 args.difficulty = 'all';
 args.model = 'random';

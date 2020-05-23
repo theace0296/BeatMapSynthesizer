@@ -1,17 +1,39 @@
 // This file is required by the worker.html file and will
 // be executed in the renderer process for that window.
 // All of the Node.js APIs are available in this process.
-import { ipcRenderer, app } from "electron";
+import { ipcRenderer, remote } from "electron";
 import promiseIpc from 'electron-promise-ipc';
 import * as path from "path";
 import { PythonShell, Options, PythonShellError } from 'python-shell';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
-import { beatMapArgs } from "./app.js";
+/**
+ * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+class beatMapArgs {
+    dir: string;
+    difficulty: string;
+    model: string;
+    k: number;
+    version: number;
+    outDir: string;
+    zipFiles: number;
 
-let pythonInternalPath = path.join(app.getAppPath().toString(), "build/python");
-let scriptsInternalPath = path.join(app.getAppPath().toString(), "build/scripts");
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
+        this.zipFiles = 0;
+        return this;
+    }
+}
+
+let pythonInternalPath = path.join(remote.app.getAppPath().toString(), "build/python");
+let scriptsInternalPath = path.join(remote.app.getAppPath().toString(), "build/scripts");
 let tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
 let options: Options = {
     mode: 'text',
@@ -26,12 +48,12 @@ promiseIpc.on('worker-copy-files', async (event) => {
     if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
         updateFiles = true;
     }
-    else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), app.getVersion().toString(), '<')) {
+    else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), remote.app.getVersion().toString(), '<')) {
         updateFiles = true;
     }
 
     if (updateFiles) {
-        await fsx.writeFile(path.join(tempDir, 'version.txt'), app.getVersion().toString());
+        await fsx.writeFile(path.join(tempDir, 'version.txt'), remote.app.getVersion().toString());
         await fsx.copy(pythonInternalPath, path.join(tempDir, 'python'));
     }
 

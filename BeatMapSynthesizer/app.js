@@ -9,7 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.beatMapArgs = void 0;
 // Modules to control application life and create native browser window
 const electron_1 = require("electron");
 const electron_promise_ipc_1 = require("electron-promise-ipc");
@@ -20,6 +19,31 @@ const fsx = require("fs-extra");
  */
 let mainWindow;
 /**
+ * This method will be called when Electron has finished
+ * initialization and is ready to create browser windows.
+ * Some APIs can only be used after this event occurs.
+ */
+electron_1.app.on('ready', () => {
+    createMainWindow();
+    electron_1.app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (electron_1.BrowserWindow.getAllWindows().length === 0)
+            createMainWindow();
+    });
+});
+/**
+ * Quit when all windows are closed.
+ * On OS X it is common for applications and their menu bar
+ * to stay active until the user quits explicitly with Cmd + Q.
+ */
+electron_1.app.on('window-all-closed', () => {
+    // On macOS it is common for applications and their menu bar
+    // to stay active until the user quits explicitly with Cmd + Q
+    if (process.platform !== 'darwin')
+        electron_1.app.quit();
+});
+/**
  * `createMainWindow()` is responsible for the initial creation of the main window.
  */
 function createMainWindow() {
@@ -29,7 +53,7 @@ function createMainWindow() {
         height: 600,
         autoHideMenuBar: true,
         webPreferences: {
-            preload: path.join(electron_1.app.getAppPath().toString(), "preload.js")
+            preload: path.join(electron_1.app.getAppPath(), 'preload.js')
         }
     });
     // and load the index.html of the app.
@@ -56,7 +80,7 @@ class workerWindow {
             show: false,
             autoHideMenuBar: true,
             webPreferences: {
-                preload: path.join(electron_1.app.getAppPath().toString(), "worker.js")
+                preload: path.join(electron_1.app.getAppPath(), 'worker.js')
             }
         });
         // load the worker.html
@@ -105,7 +129,6 @@ class beatMapArgs {
         return this;
     }
 }
-exports.beatMapArgs = beatMapArgs;
 /**
  * `_log()` is responsible for sending log messages to the Chromium Console.
  * @param message  The message to be sent to the console.
@@ -120,31 +143,6 @@ function _log(message) {
 function _error(message) {
     mainWindow.webContents.send('console-error', message);
 }
-/**
- * This method will be called when Electron has finished
- * initialization and is ready to create browser windows.
- * Some APIs can only be used after this event occurs.
- */
-electron_1.app.whenReady().then(() => {
-    createMainWindow();
-    electron_1.app.on('activate', () => {
-        // On macOS it's common to re-create a window in the app when the
-        // dock icon is clicked and there are no other windows open.
-        if (electron_1.BrowserWindow.getAllWindows().length === 0)
-            createMainWindow();
-    });
-});
-/**
- * Quit when all windows are closed.
- * On OS X it is common for applications and their menu bar
- * to stay active until the user quits explicitly with Cmd + Q.
- */
-electron_1.app.on('window-all-closed', () => {
-    // On macOS it is common for applications and their menu bar
-    // to stay active until the user quits explicitly with Cmd + Q
-    if (process.platform !== 'darwin')
-        electron_1.app.quit();
-});
 /**
  * `__log__` is a inter-process communication channel for sending
  * log messages to the Chromium Console.
@@ -309,52 +307,50 @@ function findFilesInDir(startPath, filter, callback) {
  * @param version The version of data to use when using a HMM model.
  * @param outDir The directory to put the output files.
  */
-electron_1.ipcMain.on('__generateBeatMap__', function (event, opType, dir, args) {
-    return __awaiter(this, void 0, void 0, function* () {
-        let totalCount = 0;
-        let currentCount = 0;
-        if (opType === 0) {
-            // Folders
-            if (typeof dir === 'string') {
-                // Single Folder
-                let newDir = yield countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
-                totalCount = newDir.length;
-                dir = newDir;
-            }
-            else if (Array.isArray(dir)) {
-                // Multiple Folders
-                let newDir;
-                dir.forEach((folder) => __awaiter(this, void 0, void 0, function* () {
-                    newDir.concat(yield countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
-                }));
-                totalCount = newDir.length;
-                dir = newDir;
-            }
-        }
-        else if (typeof dir === 'string') {
-            // Single File
-            let newDir = [dir];
+electron_1.ipcMain.on('__generateBeatMap__', (event, opType, dir, args) => __awaiter(void 0, void 0, void 0, function* () {
+    let totalCount = 0;
+    let currentCount = 0;
+    if (opType === 0) {
+        // Folders
+        if (typeof dir === 'string') {
+            // Single Folder
+            let newDir = yield countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
             totalCount = newDir.length;
             dir = newDir;
         }
-        totalCount += 2;
-        event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-        let mainWorker = new workerWindow();
-        mainWorker.copyFiles();
-        currentCount += 1;
-        event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-        mainWorker.updatePython();
-        currentCount += 1;
-        event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-        dir.forEach((file) => {
-            if (currentCount < totalCount) {
-                mainWorker.generateBeatMaps(file, args);
-                currentCount += 1;
-                event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-            }
-        });
-        event.sender.send('task-log-append-message', 'Beat Map Complete!');
-        mainWorker.close();
-    });
-});
+        else if (Array.isArray(dir)) {
+            // Multiple Folders
+            let newDir;
+            dir.forEach((folder) => __awaiter(void 0, void 0, void 0, function* () {
+                newDir.concat(yield countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
+            }));
+            totalCount = newDir.length;
+            dir = newDir;
+        }
+    }
+    else if (typeof dir === 'string') {
+        // Single File
+        let newDir = [dir];
+        totalCount = newDir.length;
+        dir = newDir;
+    }
+    totalCount += 2;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
+    let mainWorker = new workerWindow();
+    yield mainWorker.copyFiles();
+    currentCount += 1;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
+    yield mainWorker.updatePython();
+    currentCount += 1;
+    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
+    dir.forEach((file) => __awaiter(void 0, void 0, void 0, function* () {
+        if (currentCount < totalCount) {
+            yield mainWorker.generateBeatMaps(file, args);
+            currentCount += 1;
+            event.sender.send('__updateTaskProgress__', currentCount, totalCount);
+        }
+    }));
+    event.sender.send('task-log-append-message', 'Beat Map Complete!');
+    mainWorker.close();
+}));
 //# sourceMappingURL=app.js.map
