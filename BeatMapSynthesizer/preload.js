@@ -5,7 +5,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 let selectedDirs = [];
 let selectedDiff = 'all';
-let selectedModel = 'rate_modulated_segmented_HMM';
+let selectedModel = 'random';
 let selectedOutDir = process.env.PORTABLE_EXECUTABLE_DIR;
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFilesButton').addEventListener('click', () => {
