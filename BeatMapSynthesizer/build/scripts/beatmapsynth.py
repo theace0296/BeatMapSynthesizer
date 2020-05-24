@@ -298,11 +298,11 @@ class Main:
     #Mapping Function
     def generateBeatMap(self):
         #Load song and get beat features
-        print("Loading Song...")
+        print(f"{self.song_name} | Loading Song...")
         self.tracks['bpm'], self.tracks['beat_times'], self.tracks['y'], self.tracks['sr'] = self.getBeatFeatures()
-        print("Song loaded successfully!")
+        print(f"{self.song_name} | Song loaded successfully!")
         #Write lists for note placement, event placement, and obstacle placement
-        print("Mapping...")
+        print(f"{self.song_name} | Mapping...")
         if self.difficulty.casefold() == 'ALL'.casefold():
             for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 self.tracks[diff.casefold()]['notes_list'] = self.runModel(diff.casefold()) #fixes _time != beat time
@@ -312,16 +312,19 @@ class Main:
             self.tracks[self.difficulty.casefold()]['notes_list'] = self.runModel(self.difficulty.casefold()) #fixes _time != beat time
             self.tracks[self.difficulty.casefold()]['events_list'] = self.eventsWriter(self.difficulty.casefold())
             self.tracks[self.difficulty.casefold()]['obstacles_list'] = self.obstaclesWriter(self.difficulty.casefold())
-        print("Mapping done!")
+        print(f"{self.song_name} | Mapping done!")
         #Write and zip files
-        print("Writing files to disk...")
+        print(f"{self.song_name} | Writing files to disk...")
         self.writeInfoFile()
         self.writeLevelFile()
-        print("Converting music file...")
+        print(f"{self.song_name} | Converting music file...")
         self.convertMusicFile()
-        print("Zipping folder...")
+        print(f"{self.song_name} | Zipping folder...")
         self.zipWriter()
-        print(f"Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
+        if (self.zipFiles):
+            print(f"{self.song_name} | Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
+        else:
+            print(f"{self.song_name} | Finished! Look for folder in {self.outDir}, and place in the 'CustomMusic' folder in the Beat Saber directory")
     
     #Refractored model runner to allow for only a single mapping function
     def runModel(self, difficulty):

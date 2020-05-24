@@ -380,36 +380,22 @@ ipcMain.on('__selectOutDirectory__', async (event) => {
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-function _generateBeatMap(opType: number, dir: string | string[], args: beatMapArgs) {
+function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
     let totalCount = 0;
     let currentCount = 0;
 
     if (opType === 0) {
         // Folders
-        if (typeof dir === 'string') {
-            // Single Folder
-            let newDir = countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
-            totalCount = newDir.length;
-            dir = newDir;
-        }
-        else if (Array.isArray(dir)) {
-            // Multiple Folders
-            let newDir: string[];
-            dir.forEach(async (folder: string) => {
-                newDir.concat(countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
-            });
-            totalCount = newDir.length;
-            dir = newDir;
-        }
-    }
-    else if (typeof dir === 'string') {
-        // Single File
-        let newDir = [dir];
+        let newDir: string[] = [];
+        
+        dir.forEach((folder: string) => {
+            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file) => { newDir.push(file); });
+        });
         totalCount = newDir.length;
         dir = newDir;
     }
     else {
-        // Multiple Files
+        // Files
         totalCount = dir.length;
     }
 
@@ -450,6 +436,6 @@ function _generateBeatMap(opType: number, dir: string | string[], args: beatMapA
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-ipcMain.on('__generateBeatMap__', (event, opType: number, dir: string | string[], args: beatMapArgs) => {
+ipcMain.on('__generateBeatMap__', (event, opType: number, dir: string[], args: beatMapArgs) => {
     _generateBeatMap(opType, dir, args);
 });

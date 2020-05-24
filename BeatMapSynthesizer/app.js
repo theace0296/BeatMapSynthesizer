@@ -358,30 +358,15 @@ function _generateBeatMap(opType, dir, args) {
     let currentCount = 0;
     if (opType === 0) {
         // Folders
-        if (typeof dir === 'string') {
-            // Single Folder
-            let newDir = countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
-            totalCount = newDir.length;
-            dir = newDir;
-        }
-        else if (Array.isArray(dir)) {
-            // Multiple Folders
-            let newDir;
-            dir.forEach((folder) => __awaiter(this, void 0, void 0, function* () {
-                newDir.concat(countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
-            }));
-            totalCount = newDir.length;
-            dir = newDir;
-        }
-    }
-    else if (typeof dir === 'string') {
-        // Single File
-        let newDir = [dir];
+        let newDir = [];
+        dir.forEach((folder) => {
+            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file) => { newDir.push(file); });
+        });
         totalCount = newDir.length;
         dir = newDir;
     }
     else {
-        // Multiple Files
+        // Files
         totalCount = dir.length;
     }
     totalCount += 2;
