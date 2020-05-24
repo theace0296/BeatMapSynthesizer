@@ -92,14 +92,14 @@ electron_1.ipcRenderer.on('task-progress', (event, value, maxValue) => {
 electron_1.ipcRenderer.on('task-log-append-message', (event, message) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
 electron_1.ipcRenderer.on('selectFilesDirs-finished', (event, param) => {
     selectedDirs.length = 0;
-    param.forEach((value) => {
+    for (let value of param) {
         // Append filename to varaible
         selectedDirs.push(value);
         // Create the list item and set its contents
         let item = document.createElement('li').appendChild(document.createTextNode(value));
         // Add it to the list:
         document.getElementById('dirsfilesList').appendChild(item);
-    });
+    }
 });
 electron_1.ipcRenderer.on('selectOutDirectory-finished', (event, param) => {
     // Append filename to varaible

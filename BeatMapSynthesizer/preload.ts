@@ -113,14 +113,14 @@ ipcRenderer.on('task-log-append-message', (event, message: string) => document.g
 
 ipcRenderer.on('selectFilesDirs-finished', (event, param: string[]) => {
     selectedDirs.length = 0;
-    param.forEach((value: string) => {
+    for (let value of param) {
         // Append filename to varaible
         selectedDirs.push(value);
         // Create the list item and set its contents
         let item = document.createElement('li').appendChild(document.createTextNode(value));
         // Add it to the list:
         document.getElementById('dirsfilesList').appendChild(item);
-    });
+    }
 });
 
 ipcRenderer.on('selectOutDirectory-finished', (event, param: string) => {
