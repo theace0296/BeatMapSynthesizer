@@ -17,6 +17,19 @@ const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
 const os_1 = require("os");
+const coreCount = calcUsableCores();
+function calcUsableCores() {
+    let workingCores = os_1.cpus().length > 2 ? os_1.cpus().length - 2 : 1;
+    if (os_1.totalmem() >= (workingCores * 1024)) {
+        return workingCores;
+    }
+    else if ((os_1.totalmem() / 1024) >= 1) {
+        return Math.floor(os_1.totalmem() / 1024);
+    }
+    else {
+        return 1;
+    }
+}
 /**
  * `mainWindow` is the render process window the user interacts with.
  */
@@ -88,6 +101,7 @@ class worker {
             pythonPath: path.join(this.tempDir, "python/python.exe"),
             pythonOptions: ['-u']
         };
+        this.shellsRunning = 0;
     }
     // Class methods
     copyFiles() {
@@ -153,7 +167,6 @@ class worker {
                 if (artistname.includes(invalidchar))
                     artistname.replace(invalidchar, '^');
             }
-            _log('generateBeatMaps - Metadata read');
             let temp_options = this.options;
             temp_options.args = [
                 `${args.dir.normalize().replace(/\\/gi, "/")}`,
@@ -166,7 +179,6 @@ class worker {
                 '--outDir', args.outDir.normalize().replace(/\\/gi, "/"),
                 '--zipFiles', args.zipFiles.toString()
             ];
-            _log('generateBeatMaps - Arguments set');
             return new Promise(resolve => {
                 python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
                     .on('message', (message) => {
@@ -177,10 +189,12 @@ class worker {
                 })
                     .on('close', () => {
                     _log('generateBeatMaps - Finished');
+                    --this.shellsRunning;
                     resolve(true);
                 })
                     .on('error', () => {
                     _log('generateBeatMaps - Error');
+                    --this.shellsRunning;
                     resolve(false);
                 });
             });
@@ -383,22 +397,19 @@ function _generateBeatMap(opType, dir, args) {
             currentCount += 1;
             _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
             _appendMessageTaskLog('Updated Python!');
-            const coreCount = os_1.cpus().length;
-            let inUseCores = 0;
-            for (let file of dir) {
-                while (inUseCores > coreCount) {
-                    // Wait for processes to finish
-                }
-                if (currentCount < totalCount) {
-                    inUseCores += 1;
-                    mainWorker.generateBeatMaps(file, args).then(() => {
-                        currentCount += 1;
+            let index = 0;
+            function generate() {
+                while (mainWorker.shellsRunning < coreCount && index < dir.length && currentCount < totalCount) {
+                    ++mainWorker.shellsRunning;
+                    mainWorker.generateBeatMaps(dir[++index], args).then(() => {
+                        ++currentCount;
                         _updateTaskProgress(currentCount, totalCount);
-                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(file)}!`);
-                        inUseCores -= 1;
+                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
+                        generate();
                     });
                 }
             }
+            generate();
         });
     });
 }

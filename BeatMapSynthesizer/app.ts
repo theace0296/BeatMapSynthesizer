@@ -5,7 +5,22 @@ import { PythonShell, Options, PythonShellError } from 'python-shell';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
-import { cpus } from 'os';
+import { cpus, totalmem } from 'os';
+
+const coreCount: number = calcUsableCores();
+
+function calcUsableCores(): number {
+    let workingCores: number = cpus().length > 2 ? cpus().length - 2 : 1;
+    if (totalmem() >= (workingCores * 1024)) {
+        return workingCores;
+    }
+    else if ((totalmem() / 1024) >= 1) {
+        return Math.floor(totalmem() / 1024);
+    }
+    else {
+        return 1;
+    }
+}
 
 /**
  * `mainWindow` is the render process window the user interacts with.
@@ -80,6 +95,7 @@ class worker {
     scriptsInternalPath: string;
     tempDir: string;
     options: Options;
+    shellsRunning: number;
 
     // Constructor
     constructor() {
@@ -94,6 +110,7 @@ class worker {
             pythonPath: path.join(this.tempDir, "python/python.exe"),
             pythonOptions: ['-u']
         };
+        this.shellsRunning = 0;
     }
 
     // Class methods
@@ -159,8 +176,6 @@ class worker {
                 artistname.replace(invalidchar, '^');
         }
 
-        _log('generateBeatMaps - Metadata read');
-
         let temp_options: Options = this.options;
         temp_options.args = [
             `${args.dir.normalize().replace(/\\/gi, "/")}`,
@@ -174,8 +189,6 @@ class worker {
             '--zipFiles', args.zipFiles.toString()
         ];
 
-        _log('generateBeatMaps - Arguments set');
-
         return new Promise(resolve => {
             PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { /* Callback not used */ })
                 .on('message', (message: string) => {
@@ -186,10 +199,12 @@ class worker {
                 })
                 .on('close', () => {
                     _log('generateBeatMaps - Finished');
+                    --this.shellsRunning;
                     resolve(true);
                 })
                 .on('error', () => {
                     _log('generateBeatMaps - Error');
+                    --this.shellsRunning;
                     resolve(false);
                 });
         });
@@ -417,23 +432,19 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
             _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
             _appendMessageTaskLog('Updated Python!');
 
-            const coreCount: number = cpus().length;
-            let inUseCores: number = 0;
-
-            for (let file of dir) {
-                while (inUseCores > coreCount) {
-                    // Wait for processes to finish
-                }
-                if (currentCount < totalCount) {
-                    inUseCores += 1;
-                    mainWorker.generateBeatMaps(file, args).then(() => {
-                        currentCount += 1;
+            let index = 0;
+            function generate() {
+                while (mainWorker.shellsRunning < coreCount && index < dir.length && currentCount < totalCount) {
+                    ++mainWorker.shellsRunning;
+                    mainWorker.generateBeatMaps(dir[++index], args).then(() => {
+                        ++currentCount;
                         _updateTaskProgress(currentCount, totalCount);
-                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(file)}!`);
-                        inUseCores -= 1;
+                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
+                        generate();
                     });
                 }
             }
+            generate();
         });
         
     });
