@@ -22,14 +22,16 @@ const coreCount = calcUsableCores();
  * `calcUsableCores` calculates the 'usable' cores for running multiple beat map generations at once.
  * It is based off of the average system resource usage and will fallback to one processes at a time
  * if system resources are not plentiful.
+ * Reserve 2 cores, if possible, for system usage.
+ * 1073741824 is 1024MB in Bytes.
  */
 function calcUsableCores() {
     let workingCores = os_1.cpus().length > 2 ? os_1.cpus().length - 2 : 1;
-    if (os_1.totalmem() >= (workingCores * 1024000000)) {
+    if (os_1.totalmem() >= (workingCores * 1073741824)) {
         return workingCores;
     }
-    else if ((os_1.totalmem() / 1024000000) >= 1) {
-        return Math.floor(os_1.totalmem() / 1024000000);
+    else if ((os_1.totalmem() / 1073741824) >= 1) {
+        return Math.floor(os_1.totalmem() / 1073741824);
     }
     else {
         return 1;
