@@ -16,6 +16,7 @@ const python_shell_1 = require("python-shell");
 const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
+const os_1 = require("os");
 /**
  * `mainWindow` is the render process window the user interacts with.
  */
@@ -372,22 +373,29 @@ function _generateBeatMap(opType, dir, args) {
     }
     totalCount += 2;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-    _appendMessageTaskLog('Beat Map Start!');
+    _appendMessageTaskLog('Beat Map Synthesizer Started!');
     const mainWorker = new worker();
     mainWorker.copyFiles().then(() => {
         currentCount += 1;
         _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-        _appendMessageTaskLog('Beat Map Copied Files!');
+        _appendMessageTaskLog('Initialized Files!');
         mainWorker.updatePython().then(() => {
             currentCount += 1;
             _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-            _appendMessageTaskLog('Beat Map Updated Python!');
+            _appendMessageTaskLog('Updated Python!');
+            const coreCount = os_1.cpus().length;
+            let inUseCores = 0;
             for (let file of dir) {
+                while (inUseCores > coreCount) {
+                    // Wait for processes to finish
+                }
                 if (currentCount < totalCount) {
+                    inUseCores += 1;
                     mainWorker.generateBeatMaps(file, args).then(() => {
                         currentCount += 1;
                         _updateTaskProgress(currentCount, totalCount);
                         _appendMessageTaskLog(`Beat Map Generated for ${path.basename(file)}!`);
+                        inUseCores -= 1;
                     });
                 }
             }

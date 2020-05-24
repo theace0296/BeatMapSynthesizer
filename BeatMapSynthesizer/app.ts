@@ -5,6 +5,7 @@ import { PythonShell, Options, PythonShellError } from 'python-shell';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
+import { cpus } from 'os';
 
 /**
  * `mainWindow` is the render process window the user interacts with.
@@ -402,26 +403,34 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
 
     totalCount += 2;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-    _appendMessageTaskLog('Beat Map Start!');
+    _appendMessageTaskLog('Beat Map Synthesizer Started!');
 
     const mainWorker = new worker();
 
     mainWorker.copyFiles().then(() => {
         currentCount += 1;
         _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-        _appendMessageTaskLog('Beat Map Copied Files!');
+        _appendMessageTaskLog('Initialized Files!');
 
         mainWorker.updatePython().then(() => {
             currentCount += 1;
             _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-            _appendMessageTaskLog('Beat Map Updated Python!');
+            _appendMessageTaskLog('Updated Python!');
+
+            const coreCount: number = cpus().length;
+            let inUseCores: number = 0;
 
             for (let file of dir) {
+                while (inUseCores > coreCount) {
+                    // Wait for processes to finish
+                }
                 if (currentCount < totalCount) {
+                    inUseCores += 1;
                     mainWorker.generateBeatMaps(file, args).then(() => {
                         currentCount += 1;
                         _updateTaskProgress(currentCount, totalCount);
                         _appendMessageTaskLog(`Beat Map Generated for ${path.basename(file)}!`);
+                        inUseCores -= 1;
                     });
                 }
             }
