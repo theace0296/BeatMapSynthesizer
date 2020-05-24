@@ -18,13 +18,18 @@ const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
 const os_1 = require("os");
 const coreCount = calcUsableCores();
+/**
+ * `calcUsableCores` calculates the 'usable' cores for running multiple beat map generations at once.
+ * It is based off of the average system resource usage and will fallback to one processes at a time
+ * if system resources are not plentiful.
+ */
 function calcUsableCores() {
     let workingCores = os_1.cpus().length > 2 ? os_1.cpus().length - 2 : 1;
-    if (os_1.totalmem() >= (workingCores * 1024)) {
+    if (os_1.totalmem() >= (workingCores * 1024000000)) {
         return workingCores;
     }
-    else if ((os_1.totalmem() / 1024) >= 1) {
-        return Math.floor(os_1.totalmem() / 1024);
+    else if ((os_1.totalmem() / 1024000000) >= 1) {
+        return Math.floor(os_1.totalmem() / 1024000000);
     }
     else {
         return 1;
