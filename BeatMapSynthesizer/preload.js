@@ -15,7 +15,6 @@ class beatMapArgs {
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
-        return this;
     }
 }
 let args = new beatMapArgs();
@@ -74,19 +73,19 @@ electron_1.ipcRenderer.on('console-log', (event, message) => console.log(message
 electron_1.ipcRenderer.on('console-error', (event, message) => console.error(message));
 electron_1.ipcRenderer.on('task-progress', (event, value, maxValue) => {
     if (value === 0) {
-        document.getElementById('taskProgressBar').innerHTML = `$0%`;
+        document.getElementById('taskProgressBar').innerHTML = `0%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 0%;`);
     }
     else if (value === -1) {
-        document.getElementById('taskProgressBar').innerHTML = `$100%`;
+        document.getElementById('taskProgressBar').innerHTML = `100%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 100%;`);
     }
     else if ((value / maxValue) <= .10) {
-        document.getElementById('taskProgressBar').innerHTML = `${(value / maxValue) * 100}%`;
+        document.getElementById('taskProgressBar').innerHTML = `${((value / maxValue) * 100).toFixed(0)}%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 10%;`);
     }
     else {
-        document.getElementById('taskProgressBar').innerHTML = `${(value / maxValue) * 100}%`;
+        document.getElementById('taskProgressBar').innerHTML = `${((value / maxValue) * 100).toFixed(0)}%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: ${(value / maxValue) * 100}%;`);
     }
 });

@@ -13,12 +13,13 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // be executed in the renderer process for that window.
 // All of the Node.js APIs are available in this process.
 const electron_1 = require("electron");
-const electron_promise_ipc_1 = require("electron-promise-ipc");
+const promise_tron_1 = require("promise-tron");
 const path = require("path");
 const python_shell_1 = require("python-shell");
 const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
+const promiseTronRenderer = new promise_tron_1.PromiseTron(electron_1.ipcRenderer);
 /**
  * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
@@ -31,34 +32,55 @@ class beatMapArgs {
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
-        return this;
     }
 }
-let pythonInternalPath = path.join(electron_1.remote.app.getAppPath().toString(), "build/python");
-let scriptsInternalPath = path.join(electron_1.remote.app.getAppPath().toString(), "build/scripts");
-let tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
-let options = {
-    mode: 'text',
-    pythonPath: path.join(tempDir, "python/python.exe"),
-    pythonOptions: ['-u']
-};
-electron_promise_ipc_1.default.on('worker-copy-files', (event) => __awaiter(void 0, void 0, void 0, function* () {
-    yield fsx.copy(scriptsInternalPath, path.join(tempDir, 'scripts'));
-    // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
-    let updateFiles = false;
-    if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
-        updateFiles = true;
+let appPath;
+let appVersion;
+let pythonInternalPath;
+let scriptsInternalPath;
+let tempDir;
+let options;
+electron_1.ipcRenderer.once('worker-init', (event, app_path, app_ver) => {
+    appPath = app_path;
+    appVersion = app_ver;
+    pythonInternalPath = path.join(appPath, "build/python");
+    scriptsInternalPath = path.join(appPath, "build/scripts");
+    tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
+    options = {
+        mode: 'text',
+        pythonPath: path.join(tempDir, "python/python.exe"),
+        pythonOptions: ['-u']
+    };
+});
+promiseTronRenderer.on((request, replyWith) => __awaiter(void 0, void 0, void 0, function* () {
+    if (request.data === 'worker-copy-files') {
+        console.log('worker copy files - start');
+        yield fsx.copy(scriptsInternalPath, path.join(tempDir, 'scripts'));
+        console.log('worker copy files - copy scripts folder complete');
+        // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
+        let updateFiles = false;
+        if (!fsx.existsSync(path.join(tempDir, 'version.txt'))) {
+            updateFiles = true;
+            console.log('worker copy files - version.txt does not exist');
+        }
+        else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), appVersion, '<')) {
+            updateFiles = true;
+            console.log('worker copy files - app version greater than file version');
+        }
+        if (updateFiles) {
+            console.log('worker copy files - updating files');
+            yield fsx.writeFile(path.join(tempDir, 'version.txt'), appVersion);
+            console.log('worker copy files - version.txt written');
+            yield fsx.copy(pythonInternalPath, path.join(tempDir, 'python'));
+            console.log('worker copy files - copy python files complete');
+        }
     }
-    else if (compareVersions.compare(fsx.readFileSync(path.join(tempDir, 'version.txt')).toString(), electron_1.remote.app.getVersion().toString(), '<')) {
-        updateFiles = true;
-    }
-    if (updateFiles) {
-        yield fsx.writeFile(path.join(tempDir, 'version.txt'), electron_1.remote.app.getVersion().toString());
-        yield fsx.copy(pythonInternalPath, path.join(tempDir, 'python'));
-    }
-    return true;
+    replyWith({
+        success: 'success',
+        error: 'failure'
+    });
 }));
-electron_promise_ipc_1.default.on('worker-update-python', (event) => __awaiter(void 0, void 0, void 0, function* () {
+electron_1.ipcRenderer.on('worker-update-python', (event) => __awaiter(void 0, void 0, void 0, function* () {
     yield python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, options, function () { })
         .on('message', function (message) {
         event.sender.send('__appendMessageTaskLog__', message);
@@ -66,9 +88,9 @@ electron_promise_ipc_1.default.on('worker-update-python', (event) => __awaiter(v
         .on('stderr', function (err) {
         event.sender.send('__log__', err);
     });
-    return true;
+    event.sender.send('update-python-reply', 1);
 }));
-electron_promise_ipc_1.default.on('worker-generate-beatmaps', (args, event) => __awaiter(void 0, void 0, void 0, function* () {
+electron_1.ipcRenderer.on('worker-generate-beatmaps', (event, args) => __awaiter(void 0, void 0, void 0, function* () {
     let metadata = yield mm.parseFile(args.dir);
     let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
     let trackname = metadata.common.title;
@@ -97,6 +119,6 @@ electron_promise_ipc_1.default.on('worker-generate-beatmaps', (args, event) => _
         .on('stderr', function (err) {
         event.sender.send('__log__', err);
     });
-    return true;
+    event.sender.send('generate-beatmaps-reply', 1);
 }));
 //# sourceMappingURL=worker.js.map

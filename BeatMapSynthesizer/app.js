@@ -11,9 +11,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 // Modules to control application life and create native browser window
 const electron_1 = require("electron");
-const electron_promise_ipc_1 = require("electron-promise-ipc");
 const path = require("path");
+const python_shell_1 = require("python-shell");
+const mm = require("music-metadata");
 const fsx = require("fs-extra");
+const compareVersions = require("compare-versions");
 /**
  * `mainWindow` is the render process window the user interacts with.
  */
@@ -23,7 +25,7 @@ let mainWindow;
  * initialization and is ready to create browser windows.
  * Some APIs can only be used after this event occurs.
  */
-electron_1.app.on('ready', () => {
+electron_1.app.on('ready', () => __awaiter(void 0, void 0, void 0, function* () {
     createMainWindow();
     electron_1.app.on('activate', () => {
         // On macOS it's common to re-create a window in the app when the
@@ -31,7 +33,7 @@ electron_1.app.on('ready', () => {
         if (electron_1.BrowserWindow.getAllWindows().length === 0)
             createMainWindow();
     });
-});
+}));
 /**
  * Quit when all windows are closed.
  * On OS X it is common for applications and their menu bar
@@ -69,49 +71,118 @@ function createMainWindow() {
     });
 }
 /**
- * `workerWindow` is a class for creating hidden process windows that are responsible for running operations.
+ * `worker` is a class for creating hidden processes that are responsible for running operations.
  */
-class workerWindow {
+class worker {
     // Constructor
     constructor() {
-        // create hidden worker window
-        this.window = new electron_1.BrowserWindow({
-            parent: mainWindow,
-            show: false,
-            autoHideMenuBar: true,
-            webPreferences: {
-                preload: path.join(electron_1.app.getAppPath(), 'worker.js')
-            }
-        });
-        // load the worker.html
-        this.window.loadFile(path.join(electron_1.app.getAppPath().toString(), 'worker.html'));
-        this.window.on("closed", () => {
-            // Dereference the window object, usually you would store windows
-            // in an array if your app supports multi windows, this is the time
-            // when you should delete the corresponding element.
-            this.window = null;
-        });
-        return this;
+        // create the worker
+        this.appPath = electron_1.app.getAppPath();
+        this.appVersion = electron_1.app.getVersion();
+        this.pythonInternalPath = path.join(this.appPath, "build/python");
+        this.scriptsInternalPath = path.join(this.appPath, "build/scripts");
+        this.tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
+        this.options = {
+            mode: 'text',
+            pythonPath: path.join(this.tempDir, "python/python.exe"),
+            pythonOptions: ['-u']
+        };
     }
     // Class methods
     copyFiles() {
         return __awaiter(this, void 0, void 0, function* () {
-            return (yield electron_promise_ipc_1.default.send('worker-copy-files', this.window.webContents));
+            return new Promise(resolve => {
+                fsx.copy(this.scriptsInternalPath, path.join(this.tempDir, 'scripts'));
+                // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
+                let updateFiles = false;
+                if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
+                    updateFiles = true;
+                }
+                else if (compareVersions.compare(fsx.readFileSync(path.join(this.tempDir, 'version.txt')).toString(), this.appVersion, '<')) {
+                    updateFiles = true;
+                }
+                if (updateFiles) {
+                    fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion);
+                    fsx.copy(this.pythonInternalPath, path.join(this.tempDir, 'python'))
+                        .then(() => { resolve(updateFiles); });
+                }
+                else {
+                    resolve(updateFiles);
+                }
+            });
         });
     }
     updatePython() {
         return __awaiter(this, void 0, void 0, function* () {
-            return (yield electron_promise_ipc_1.default.send('worker-update-python', this.window.webContents));
+            _log('updatePython - Start');
+            return new Promise(resolve => {
+                python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(this.tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, this.options, function () { })
+                    .on('message', function (message) {
+                    if (message.includes('Requirement already'))
+                        _log(message);
+                    else
+                        _appendMessageTaskLog(message);
+                })
+                    .on('stderr', function (err) {
+                    _log(err);
+                })
+                    .on('close', () => {
+                    _log('updatePython - Finished');
+                    resolve(true);
+                })
+                    .on('error', () => {
+                    _log('updatePython - Error');
+                    resolve(false);
+                });
+            });
         });
     }
     generateBeatMaps(dir, args) {
         return __awaiter(this, void 0, void 0, function* () {
+            _log('generateBeatMaps - Start');
             args.dir = dir;
-            return (yield electron_promise_ipc_1.default.send('worker-generate-beatmaps', this.window.webContents, args));
+            let metadata = yield mm.parseFile(args.dir);
+            let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
+            let trackname = metadata.common.title;
+            let artistname = metadata.common.artist;
+            for (var invalidchar of invalidchars) {
+                if (trackname.includes(invalidchar))
+                    trackname.replace(invalidchar, '^');
+                if (artistname.includes(invalidchar))
+                    artistname.replace(invalidchar, '^');
+            }
+            _log('generateBeatMaps - Metadata read');
+            let temp_options = this.options;
+            temp_options.args = [
+                `${args.dir.normalize().replace(/\\/gi, "/")}`,
+                `${trackname} - ${artistname}`,
+                `${args.difficulty}`,
+                `${args.model}`,
+                '-k', args.k.toString(),
+                '--version', args.version.toString(),
+                '--workingDir', this.tempDir.normalize().replace(/\\/gi, "/"),
+                '--outDir', args.outDir.normalize().replace(/\\/gi, "/"),
+                '--zipFiles', args.zipFiles.toString()
+            ];
+            _log('generateBeatMaps - Arguments set');
+            return new Promise(resolve => {
+                python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
+                    .on('message', (message) => {
+                    _appendMessageTaskLog(message);
+                })
+                    .on('stderr', (err) => {
+                    _log(err);
+                })
+                    .on('close', () => {
+                    _log('generateBeatMaps - Finished');
+                    resolve(true);
+                })
+                    .on('error', () => {
+                    _log('generateBeatMaps - Error');
+                    resolve(false);
+                });
+            });
         });
-    }
-    close() {
-        this.window.close();
     }
 }
 /**
@@ -126,7 +197,6 @@ class beatMapArgs {
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
-        return this;
     }
 }
 /**
@@ -144,114 +214,28 @@ function _error(message) {
     mainWindow.webContents.send('console-error', message);
 }
 /**
- * `__log__` is a inter-process communication channel for sending
- * log messages to the Chromium Console.
- * @param event  The inter-process communication sender of `__log__`.
- * @param message  The message to be sent to the console.
- */
-electron_1.ipcMain.on('__log__', (event, message) => _log(message));
-/**
- * `__error__` is a inter-process communication channel for sending
- * error messages to the Chromium Console.
- * @param event  The inter-process communication sender of `__error__`.
- * @param message  The message to be sent to the console.
- */
-electron_1.ipcMain.on('__error__', (event, error) => _error(error));
-/**
- * `__cancelOperation__` is a inter-process communication channel for stopping
- * the current operation.
- * @param event  The inter-process communication sender of `__error__`.
- */
-electron_1.ipcMain.on('__cancelOperation__', (event) => {
-    // Integrate this IPC for canceling the beat map generation...
-});
-/**
- * `__updateTaskProgress__` is a inter-process communication channel for updating
+ * `_updateTaskProgress` is responsible for updating
  * the progress bar in the render process with the current and max values of the progress bar.
- * @param event  The inter-process communication sender of `__error__`.
  * @param value  The current value of the progress bar.
  * @param maxValue  The maximum value of the progress bar.
+ * @param options The options to pass to the progress bar, the default is { mode: 'normal' }
  */
-electron_1.ipcMain.on('__updateTaskProgress__', (event, value, maxValue) => {
+function _updateTaskProgress(value, maxValue, options = { mode: 'normal' }) {
     mainWindow.webContents.send('task-progress', value, maxValue);
     if ((value / maxValue) < 1)
-        mainWindow.setProgressBar(value / maxValue);
+        mainWindow.setProgressBar(value / maxValue, options);
     else
         mainWindow.setProgressBar(-1);
-});
+}
 /**
- * `__appendMessageTaskLog__` is a inter-process communication channel for sending
+ * `_appendMessageTaskLog` is responsible for sending
  * log messages to the task log element the user sees.
- * @param event  The inter-process communication sender of `__appendMessageTaskLog__`.
  * @param message  The message to be sent to the task log.
  */
-electron_1.ipcMain.on('__appendMessageTaskLog__', (event, message) => mainWindow.webContents.send('task-log-append-message', message));
-/**
- * `__selectDirectory__` is a inter-process communication channel for opening
- * a native OS directory selection dialog.
- * @param event  The inter-process communication sender of `__selectDirectory__`.
- * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
- */
-electron_1.ipcMain.on('__selectDirectory__', (event) => {
-    const options = {
-        title: 'Select a folder',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
-        properties: ['openDirectory', 'multiSelections']
-    };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
-        .then((dirs) => {
-        if (!dirs.canceled) {
-            event.sender.send("selectFilesDirs-finished", dirs.filePaths);
-        }
-    }).catch((err) => {
-        _error(err);
-    });
-});
-/**
- * `__selectFiles__` is a inter-process communication channel for opening
- * a native OS file selection dialog.
- * @param event  The inter-process communication sender of `__selectFiles__`.
- * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
- */
-electron_1.ipcMain.on('__selectFiles__', (event) => {
-    const options = {
-        title: 'Select an audio file',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
-        filters: [{
-                name: 'Audio files', extensions: ['mp3', 'wav', 'flv', 'raw', 'ogg', 'egg']
-            }],
-        properties: ['openFile', 'multiSelections']
-    };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
-        .then((dirs) => {
-        if (!dirs.canceled) {
-            event.sender.send("selectFilesDirs-finished", dirs.filePaths);
-        }
-    }).catch((err) => {
-        _error(err);
-    });
-});
-/**
- * `__selectDirectory__` is a inter-process communication channel for opening
- * a native OS directory selection dialog.
- * @param event  The inter-process communication sender of `__selectDirectory__`.
- * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
- */
-electron_1.ipcMain.on('__selectOutDirectory__', (event) => {
-    const options = {
-        title: 'Select a folder',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
-        properties: ['openDirectory']
-    };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
-        .then((dirs) => {
-        if (!dirs.canceled) {
-            event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
-        }
-    }).catch((err) => {
-        _error(err);
-    });
-});
+function _appendMessageTaskLog(message) {
+    mainWindow.webContents.send('task-log-append-message', message);
+}
+;
 /**
  * `countFilesInDir` is a function that recursively counts the files that match a filter in a directory.
  * @param startPath The top-most level to start the search in.
@@ -259,21 +243,19 @@ electron_1.ipcMain.on('__selectOutDirectory__', (event) => {
  * @returns An array of files found during the search.
  */
 function countFilesInDir(startPath, filter) {
-    return __awaiter(this, void 0, void 0, function* () {
-        var results = [];
-        const files = fsx.readdirSync(startPath);
-        for (let i = 0; i < files.length; i++) {
-            const filename = path.join(startPath, files[i]);
-            const stat = fsx.lstatSync(filename);
-            if (stat.isDirectory()) {
-                results = results.concat(yield countFilesInDir(filename, filter));
-            }
-            else if (filter.test(filename)) {
-                results.push(filename);
-            }
+    var results = [];
+    const files = fsx.readdirSync(startPath);
+    for (let i = 0; i < files.length; i++) {
+        const filename = path.join(startPath, files[i]);
+        const stat = fsx.lstatSync(filename);
+        if (stat.isDirectory()) {
+            results = results.concat(countFilesInDir(filename, filter));
         }
-        return results;
-    });
+        else if (filter.test(filename)) {
+            results.push(filename);
+        }
+    }
+    return results;
 }
 /**
  * `findFilesInDir` is a function that recursively searches the files that match a filter in a directory
@@ -296,33 +278,97 @@ function findFilesInDir(startPath, filter, callback) {
     }
 }
 /**
- * `__generateBeatMap__` is a inter-process communication channel for starting
- * the beat map generation.
- * @param event  The inter-process communication sender of `__generateBeatMap__`.
+ * `__cancelOperation__` is a inter-process communication channel for stopping the current operation.
+ * @param event  The inter-process communication sender of `__cancelOperation__`.
+ */
+electron_1.ipcMain.on('__cancelOperation__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+    // Integrate this IPC for canceling the beat map generation...
+}));
+/**
+ * `__selectDirectory__` is a inter-process communication channel for opening a native OS directory selection dialog.
+ * @param event  The inter-process communication sender of `__selectDirectory__`.
+ * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
+ */
+electron_1.ipcMain.on('__selectDirectory__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+    const options = {
+        title: 'Select a folder',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        properties: ['openDirectory', 'multiSelections']
+    };
+    electron_1.dialog.showOpenDialog(mainWindow, options)
+        .then((dirs) => {
+        if (!dirs.canceled) {
+            event.sender.send("selectFilesDirs-finished", dirs.filePaths);
+        }
+    }).catch((err) => {
+        _error(err);
+    });
+}));
+/**
+ * `__selectFiles__` is a inter-process communication channel for opening a native OS file selection dialog.
+ * @param event  The inter-process communication sender of `__selectFiles__`.
+ * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
+ */
+electron_1.ipcMain.on('__selectFiles__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+    const options = {
+        title: 'Select an audio file',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        filters: [{
+                name: 'Audio files', extensions: ['mp3', 'wav', 'flv', 'raw', 'ogg', 'egg']
+            }],
+        properties: ['openFile', 'multiSelections']
+    };
+    electron_1.dialog.showOpenDialog(mainWindow, options)
+        .then((dirs) => {
+        if (!dirs.canceled) {
+            event.sender.send("selectFilesDirs-finished", dirs.filePaths);
+        }
+    }).catch((err) => {
+        _error(err);
+    });
+}));
+/**
+ * `__selectDirectory__` is a inter-process communication channel for opening a native OS directory selection dialog.
+ * @param event  The inter-process communication sender of `__selectDirectory__`.
+ * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
+ */
+electron_1.ipcMain.on('__selectOutDirectory__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+    const options = {
+        title: 'Select a folder',
+        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        properties: ['openDirectory']
+    };
+    electron_1.dialog.showOpenDialog(mainWindow, options)
+        .then((dirs) => {
+        if (!dirs.canceled) {
+            event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
+        }
+    }).catch((err) => {
+        _error(err);
+    });
+}));
+/**
+ * `_generateBeatMap` is a function for starting the beat map generation.
  * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
  * @param dir  The path of the directory/file to generate the beat map from.
- * @param difficulty  The difficulty to generate the beat map at.
- * @param model The model to use for generating the beat map.
- * @param k The number of song segments to use in a segmented model.
- * @param version The version of data to use when using a HMM model.
- * @param outDir The directory to put the output files.
+ * @param args  A map of arguments to use for generating the beat maps
  */
-electron_1.ipcMain.on('__generateBeatMap__', (event, opType, dir, args) => __awaiter(void 0, void 0, void 0, function* () {
+function _generateBeatMap(opType, dir, args) {
     let totalCount = 0;
     let currentCount = 0;
     if (opType === 0) {
         // Folders
         if (typeof dir === 'string') {
             // Single Folder
-            let newDir = yield countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
+            let newDir = countFilesInDir(dir, /mp3|wav|flv|raw|ogg|egg/);
             totalCount = newDir.length;
             dir = newDir;
         }
         else if (Array.isArray(dir)) {
             // Multiple Folders
             let newDir;
-            dir.forEach((folder) => __awaiter(void 0, void 0, void 0, function* () {
-                newDir.concat(yield countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
+            dir.forEach((folder) => __awaiter(this, void 0, void 0, function* () {
+                newDir.concat(countFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/));
             }));
             totalCount = newDir.length;
             dir = newDir;
@@ -334,23 +380,43 @@ electron_1.ipcMain.on('__generateBeatMap__', (event, opType, dir, args) => __awa
         totalCount = newDir.length;
         dir = newDir;
     }
+    else {
+        // Multiple Files
+        totalCount = dir.length;
+    }
     totalCount += 2;
-    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-    let mainWorker = new workerWindow();
-    yield mainWorker.copyFiles();
-    currentCount += 1;
-    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-    yield mainWorker.updatePython();
-    currentCount += 1;
-    event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-    dir.forEach((file) => __awaiter(void 0, void 0, void 0, function* () {
-        if (currentCount < totalCount) {
-            yield mainWorker.generateBeatMaps(file, args);
+    _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
+    _appendMessageTaskLog('Beat Map Start!');
+    const mainWorker = new worker();
+    mainWorker.copyFiles().then(() => {
+        currentCount += 1;
+        _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
+        _appendMessageTaskLog('Beat Map Copied Files!');
+        mainWorker.updatePython().then(() => {
             currentCount += 1;
-            event.sender.send('__updateTaskProgress__', currentCount, totalCount);
-        }
-    }));
-    event.sender.send('task-log-append-message', 'Beat Map Complete!');
-    mainWorker.close();
-}));
+            _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
+            _appendMessageTaskLog('Beat Map Updated Python!');
+            for (let file of dir) {
+                if (currentCount < totalCount) {
+                    mainWorker.generateBeatMaps(file, args).then(() => {
+                        currentCount += 1;
+                        _updateTaskProgress(currentCount, totalCount);
+                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(file)}!`);
+                    });
+                }
+            }
+            _appendMessageTaskLog('Beat Map Complete!');
+        });
+    });
+}
+/**
+ * `__generateBeatMap__` is a inter-process communication channel for starting the beat map generation.
+ * @param event  The inter-process communication sender of `__generateBeatMap__`.
+ * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
+ * @param dir  The path of the directory/file to generate the beat map from.
+ * @param args  A map of arguments to use for generating the beat maps
+ */
+electron_1.ipcMain.on('__generateBeatMap__', (event, opType, dir, args) => {
+    _generateBeatMap(opType, dir, args);
+});
 //# sourceMappingURL=app.js.map

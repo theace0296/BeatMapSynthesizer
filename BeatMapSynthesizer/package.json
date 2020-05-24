@@ -38,9 +38,7 @@
 			"app.js",
 			"preload.js",
 			"renderer.js",
-			"worker.js",
 			"index.html",
-			"worker.html",
 			"build/css/docs.css",
 			"build/css/flat-ui.css",
 			"build/images/beatMapSynth_Banner.jpg",
@@ -69,7 +67,6 @@
 		"@types/node": "^8.0.14",
 		"electron": "^9.0.0",
 		"electron-builder": "^22.6.1",
-		"electron-promise-ipc": "^2.1.0",
 		"typescript": "^3.2.2",
 		"yarn": "^1.22.4"
 	},

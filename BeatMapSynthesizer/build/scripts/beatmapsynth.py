@@ -268,7 +268,7 @@ class Main:
             obstacles_list = []
             return obstacles_list
 
-    def zipFiles(self):
+    def zipWriter(self):
         "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
         shutil.copy('cover.jpg', f"{self.workingDir}")
         if self.zipFiles:
@@ -320,7 +320,7 @@ class Main:
         print("Converting music file...")
         self.convertMusicFile()
         print("Zipping folder...")
-        self.zipFiles()
+        self.zipWriter()
         print(f"Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
     
     #Refractored model runner to allow for only a single mapping function
@@ -520,32 +520,36 @@ class Main:
         preds = pd.DataFrame([])
         completed_segments = {}
         for index, row in segment_df.iterrows():
-            if row['seg_no'] not in completed_segments.keys():
-                if index == 0:
-                    pred = HMM_model.walk()
-                    while len(pred) < row['length']:
+            try:
+                if row['seg_no'] not in completed_segments.keys():
+                    if index == 0:
                         pred = HMM_model.walk()
-                    completed_segments.update({row['seg_no']: {'start':0, 'end': len(pred)}})
-                    preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis = 0, ignore_index = True)
+                        while len(pred) < row['length']:
+                            pred = HMM_model.walk()
+                        completed_segments.update({row['seg_no']: {'start':0, 'end': len(pred)}})
+                        preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis = 0, ignore_index = True)
                 
-                else:
-                    pred = HMM_model.walk(init_state = tuple(preds.iloc[-5:, 0]))
-                    while len(pred) < row['length']:
+                    else:
                         pred = HMM_model.walk(init_state = tuple(preds.iloc[-5:, 0]))
-                    completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                    preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis = 0, ignore_index = True)
+                        while len(pred) < row['length']:
+                            pred = HMM_model.walk(init_state = tuple(preds.iloc[-5:, 0]))
+                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis = 0, ignore_index = True)
 
-            else:
-                if row['length'] <= (completed_segments[row['seg_no']]['end'] - completed_segments[row['seg_no']]['start']): 
-                    pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['start'] + row['length'], 0]
-                    preds = pd.concat([preds, pred], axis = 0, ignore_index = True)
                 else:
-                    extend = HMM_model.walk(init_state = tuple(preds.iloc[completed_segments[row['seg_no']]['end'] - 5 : completed_segments[row['seg_no']]['end'], 0]))
-                    pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
-                    diff = row['length'] - len(pred)
-                    pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis = 0, ignore_index = True)
-                    completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                    preds = pd.concat([preds, pred], axis = 0, ignore_index = True)
+                    if row['length'] <= (completed_segments[row['seg_no']]['end'] - completed_segments[row['seg_no']]['start']): 
+                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['start'] + row['length'], 0]
+                        preds = pd.concat([preds, pred], axis = 0, ignore_index = True)
+                    else:
+                        extend = HMM_model.walk(init_state = tuple(preds.iloc[completed_segments[row['seg_no']]['end'] - 5 : completed_segments[row['seg_no']]['end'], 0]))
+                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
+                        diff = row['length'] - len(pred)
+                        pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis = 0, ignore_index = True)
+                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        preds = pd.concat([preds, pred], axis = 0, ignore_index = True)
+            except:
+                continue
+
     
         preds_list = list(preds.iloc[:, 0])
         preds = self.walkToDataFrame(preds_list)
