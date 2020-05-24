@@ -290,7 +290,7 @@ electron_1.ipcMain.on('__cancelOperation__', (event) => __awaiter(void 0, void 0
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-electron_1.ipcMain.on('__selectDirectory__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+electron_1.ipcMain.on('__selectDirectory__', (event) => {
     const options = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -304,13 +304,13 @@ electron_1.ipcMain.on('__selectDirectory__', (event) => __awaiter(void 0, void 0
     }).catch((err) => {
         _error(err);
     });
-}));
+});
 /**
  * `__selectFiles__` is a inter-process communication channel for opening a native OS file selection dialog.
  * @param event  The inter-process communication sender of `__selectFiles__`.
  * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
  */
-electron_1.ipcMain.on('__selectFiles__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+electron_1.ipcMain.on('__selectFiles__', (event) => {
     const options = {
         title: 'Select an audio file',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -327,13 +327,13 @@ electron_1.ipcMain.on('__selectFiles__', (event) => __awaiter(void 0, void 0, vo
     }).catch((err) => {
         _error(err);
     });
-}));
+});
 /**
  * `__selectDirectory__` is a inter-process communication channel for opening a native OS directory selection dialog.
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-electron_1.ipcMain.on('__selectOutDirectory__', (event) => __awaiter(void 0, void 0, void 0, function* () {
+electron_1.ipcMain.on('__selectOutDirectory__', (event) => {
     const options = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -347,7 +347,7 @@ electron_1.ipcMain.on('__selectOutDirectory__', (event) => __awaiter(void 0, voi
     }).catch((err) => {
         _error(err);
     });
-}));
+});
 /**
  * `_generateBeatMap` is a function for starting the beat map generation.
  * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths

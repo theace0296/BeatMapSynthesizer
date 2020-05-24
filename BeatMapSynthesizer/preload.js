@@ -96,7 +96,8 @@ electron_1.ipcRenderer.on('selectFilesDirs-finished', (event, param) => {
         // Append filename to varaible
         selectedDirs.push(value);
         // Create the list item and set its contents
-        let item = document.createElement('li').appendChild(document.createTextNode(value));
+        let item = document.createElement('li');
+        item.appendChild(document.createTextNode(value));
         // Add it to the list:
         document.getElementById('dirsfilesList').appendChild(item);
     }

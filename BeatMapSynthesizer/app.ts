@@ -312,7 +312,7 @@ ipcMain.on('__cancelOperation__', async (event) => {
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectDirectory__', async (event) => {
+ipcMain.on('__selectDirectory__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -334,7 +334,7 @@ ipcMain.on('__selectDirectory__', async (event) => {
  * @param event  The inter-process communication sender of `__selectFiles__`.
  * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectFiles__', async (event) => {
+ipcMain.on('__selectFiles__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select an audio file',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -358,7 +358,7 @@ ipcMain.on('__selectFiles__', async (event) => {
  * @param event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectOutDirectory__', async (event) => {
+ipcMain.on('__selectOutDirectory__', (event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
