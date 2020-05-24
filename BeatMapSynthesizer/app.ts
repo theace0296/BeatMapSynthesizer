@@ -109,9 +109,10 @@ class worker {
             }
 
             if (updateFiles) {
-                fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion);
-                fsx.copy(this.pythonInternalPath, path.join(this.tempDir, 'python'))
-                    .then(() => { resolve(updateFiles); });
+                fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion).then(() => {
+                    fsx.copy(this.pythonInternalPath, path.join(this.tempDir, 'python'))
+                        .then(() => { resolve(updateFiles); });
+                });
             }
             else {
                 resolve(updateFiles);
