@@ -405,7 +405,6 @@ function _generateBeatMap(opType, dir, args) {
                     });
                 }
             }
-            _appendMessageTaskLog('Beat Map Complete!');
         });
     });
 }

@@ -438,7 +438,6 @@ function _generateBeatMap(opType: number, dir: string | string[], args: beatMapA
                     });
                 }
             }
-            _appendMessageTaskLog('Beat Map Complete!');
         });
         
     });
