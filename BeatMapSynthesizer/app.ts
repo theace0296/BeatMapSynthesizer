@@ -190,7 +190,7 @@ class worker {
             '--zipFiles', args.zipFiles.toString()
         ];
 
-        let beatMapExists: boolean = fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat'));
+        let beatMapExists: boolean = (fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat')) || fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}.zip`)));
 
         return new Promise(resolve => {
             if (!beatMapExists) {

@@ -180,7 +180,7 @@ class worker {
                 '--outDir', args.outDir.normalize().replace(/\\/gi, "/"),
                 '--zipFiles', args.zipFiles.toString()
             ];
-            let beatMapExists = fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat'));
+            let beatMapExists = (fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat')) || fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}.zip`)));
             return new Promise(resolve => {
                 if (!beatMapExists) {
                     python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
