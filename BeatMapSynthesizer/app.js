@@ -17,6 +17,7 @@ const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
 const os_1 = require("os");
+const sanitize = require('sanitize-filename');
 const coreCount = calcUsableCores();
 /**
  * `calcUsableCores` calculates the 'usable' cores for running multiple beat map generations at once.
@@ -30,11 +31,11 @@ function calcUsableCores() {
     if (os_1.totalmem() >= (workingCores * 1073741824)) {
         return workingCores;
     }
-    else if ((os_1.totalmem() / 1073741824) >= 1) {
+    else if ((os_1.totalmem() / 1073741824) <= workingCores) {
         return Math.floor(os_1.totalmem() / 1073741824);
     }
     else {
-        return 1;
+        return workingCores;
     }
 }
 /**
@@ -165,15 +166,8 @@ class worker {
             _log('generateBeatMaps - Start');
             args.dir = dir;
             let metadata = yield mm.parseFile(args.dir);
-            let invalidchars = ["<", ">", ":", '"', "/", "\\", "|", "?", "*"];
-            let trackname = metadata.common.title;
-            let artistname = metadata.common.artist;
-            for (var invalidchar of invalidchars) {
-                if (trackname.includes(invalidchar))
-                    trackname.replace(invalidchar, '^');
-                if (artistname.includes(invalidchar))
-                    artistname.replace(invalidchar, '^');
-            }
+            let trackname = sanitize(metadata.common.title);
+            let artistname = sanitize(metadata.common.artist);
             let temp_options = this.options;
             temp_options.args = [
                 `${args.dir.normalize().replace(/\\/gi, "/")}`,
@@ -186,24 +180,26 @@ class worker {
                 '--outDir', args.outDir.normalize().replace(/\\/gi, "/"),
                 '--zipFiles', args.zipFiles.toString()
             ];
+            let beatMapExists = fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat'));
             return new Promise(resolve => {
-                python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
-                    .on('message', (message) => {
-                    _appendMessageTaskLog(message);
-                })
-                    .on('stderr', (err) => {
-                    _log(err);
-                })
-                    .on('close', () => {
-                    _log('generateBeatMaps - Finished');
+                if (!beatMapExists) {
+                    python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
+                        .on('message', (message) => {
+                        _appendMessageTaskLog(message);
+                    })
+                        .on('stderr', (err) => {
+                        _log(err);
+                    })
+                        .on('close', () => {
+                        _log('generateBeatMaps - Finished');
+                        --this.shellsRunning;
+                        resolve(true);
+                    });
+                }
+                else {
                     --this.shellsRunning;
                     resolve(true);
-                })
-                    .on('error', () => {
-                    _log('generateBeatMaps - Error');
-                    --this.shellsRunning;
-                    resolve(false);
-                });
+                }
             });
         });
     }
@@ -406,12 +402,18 @@ function _generateBeatMap(opType, dir, args) {
             _appendMessageTaskLog('Updated Python!');
             let index = 0;
             function generate() {
-                while (mainWorker.shellsRunning < coreCount && index < dir.length && currentCount < totalCount) {
-                    ++mainWorker.shellsRunning;
-                    mainWorker.generateBeatMaps(dir[++index], args).then(() => {
-                        ++currentCount;
+                while (mainWorker.shellsRunning < coreCount && index < dir.length) {
+                    mainWorker.shellsRunning += 1;
+                    index += 1;
+                    mainWorker.generateBeatMaps(dir[index], args).then(() => {
+                        currentCount += 1;
                         _updateTaskProgress(currentCount, totalCount);
                         _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
+                        if (index == (dir.length - 1) && mainWorker.shellsRunning == 0) {
+                            _updateTaskProgress(totalCount, totalCount);
+                            _appendMessageTaskLog('Beat Map Synthesizer Finished!');
+                            return;
+                        }
                         generate();
                     });
                 }
