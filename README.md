@@ -2,7 +2,21 @@
 
 # BeatMapSynth
 
-__Instructions for installation and use are at the bottom of this README.__
+---
+
+## _Installation and Use_ 
+
+Download the latest release from the [Releases](https://github.com/theace0296/BeatMapSynthesizer/releases) tab.
+
+Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is unsafe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
+
+Once open, the only required step is to specify the file(s) you want to generate Beat Maps for. You may also select the difficulty and model to use for the generation. Lastly, you can change the output directory for the generated .ZIP file, by default this is the same as the directoy the application is in. 
+
+After it finishes, a zip folder will appear in either the directory the application is in, or the directory you choose in the application. Unzip this folder, place it in the 'CustomMusic' folder in your Beat Saber system files, start Beat Saber, and find the map under Custom Music! 
+
+That's it! Please enjoy and let me know how it works for you! If you encounter any bugs, feel free to submit an issue, or if you fix it yourself, submit a pull request! 
+
+---
 
 ## Introduction
 Beat Saber is a wildly successful virtual reality (VR) video game that has appeared in homes and arcades since its release in May 2018. The premise of the game is similar to other rhythm video games, such as Dance Dance Revolution or Guitar Hero, where the objective is to perform events in sync with music. In Beat Saber, the events are slicing through approaching blocks with two lightsabers (one in each hand) in time with upbeat, mostly electronic dance music. The blocks must be hit at the appropriate time and in the appropriate direction. Since this game is played in VR, the game is fully immersive and involves full body movement, including arm, wrist, and hand movements, ducking and dodging around obstacles, and even dancing if you’re inclined! (For an idea of what the game looks like while playing, view this [video](https://www.youtube.com/watch?v=c9hP7jbJTk0)). 
@@ -38,15 +52,3 @@ Each model has been preliminarily evaluated based on the overall 'playability' o
 In addition to this GitHub repo (which contains a lot of exploratory and development code), a standalone executable program will be available for download and use on Mac OSX and Windows systems. If you are comfortable setting up a Python environment with conda, you can clone this repo, install the conda environment in `environment.yml`, and run the `beatmapsynth.py` script from the command line. Full instructions are given in the _Installation and Use_ section.
 
 ---
-
-## _Installation and Use_ 
-
-Download the latest release from the [Releases](https://github.com/theace0296/BeatMapSynthesizer/releases) tab.
-
-Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is unsafe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
-
-Once open, the only required step is to specify the file(s) you want to generate Beat Maps for. You may also select the difficulty and model to use for the generation. Lastly, you can change the output directory for the generated .ZIP file, by default this is the same as the directoy the application is in. 
-
-After it finishes, a zip folder will appear in either the directory the application is in, or the directory you choose in the application. Unzip this folder, place it in the 'CustomMusic' folder in your Beat Saber system files, start Beat Saber, and find the map under Custom Music! 
-
-That's it! Please enjoy and let me know how it works for you! If you encounter any bugs, feel free to submit an issue, or if you fix it yourself, submit a pull request! 
