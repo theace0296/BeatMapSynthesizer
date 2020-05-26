@@ -5,10 +5,14 @@
 !BeatMapSynthesizer/*/*
 !BeatMapSynthesizer/dist/latest.txt
 !beatmapsynth.spec
+!BeatMapSynthesizer/build/scripts/*.exe
 
 BeatMapSynthesizer/dist/*.exe
 BeatMapSynthesizer/dist/win-unpacked
+BeatMapSynthesizer/build/scripts/beatmapsynth.exe
 BeatMapSynthesizer/build/scripts/models
 BeatMapSynthesizer/build/scripts/__pycache__
 BeatMapSynthesizer/build/beatmapsynth
 BeatMapSynthesizer/node_modules
+BeatMapSynthesizer/bin
+BeatMapSynthesizer/obj
