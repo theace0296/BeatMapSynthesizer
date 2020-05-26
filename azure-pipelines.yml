@@ -43,6 +43,7 @@ steps:
   displayName: Install packages
 
 - script: |
+    cd $(Build.SourcesDirectory)/BeatMapSynthesizer 
     npm install
     tsc --build
     yarn pack
