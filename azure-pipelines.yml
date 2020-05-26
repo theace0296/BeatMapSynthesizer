@@ -31,10 +31,10 @@ steps:
       python -m pip install -r ./BeatMapSynthesizer/build/scripts/requirements.txt
       python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
       python -m pip install https://github.com/librosa/librosa/zipball/master
-      python -m pip install pywin32
-      $env:Path -match '[^;]*Python[^;]*'
-      if ($Matches[0].Contains('Scripts')) { $PyPath = (Join-Path -Path $Matches[0] -ChildPath 'pywin32_postinstall.py') } else { $PyPath = (Join-Path -Path $Matches[0] -ChildPath 'Scripts\pywin32_postinstall.py') }
-      python $PyPath -install
+      $pyPath = python -c "import sys; print(sys.executable)"
+      $pyPath = Split-Path -Path $pyPath
+      $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
+      python $pyPath -install
   displayName: Install packages
 
 - script: |
