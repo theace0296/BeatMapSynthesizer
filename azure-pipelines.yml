@@ -27,6 +27,7 @@ steps:
     targetType: 'inline'
     script: |
       python -m pip install --upgrade pip
+      python -m pip install wheel
       python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
       python -m pip install git+https://github.com/librosa/librosa
       python -m pip install -r ./BeatMapSynthesizer/build/scripts/requirements.txt
