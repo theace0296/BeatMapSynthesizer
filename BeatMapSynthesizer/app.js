@@ -214,6 +214,9 @@ class worker {
                     shell.stderr.setEncoding('utf8');
                     shell.stdout.on('data', (buffer) => receiveStdout(buffer));
                     shell.stderr.on('data', (buffer) => receiveStderr(buffer));
+                    setTimeout(() => {
+                        shell.kill();
+                    }, 120000);
                 }
                 else {
                     --this.shellsRunning;

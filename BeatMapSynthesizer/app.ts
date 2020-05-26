@@ -235,6 +235,10 @@ class worker {
                 shell.stdout.on('data', (buffer) => receiveStdout(buffer));
 
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
+
+                setTimeout(() => {
+                    shell.kill();
+                }, 120000);
                 
             }
             else {
