@@ -1,0 +1,77 @@
+# Node.js
+# Build a general Node.js project with npm.
+# Add steps that analyze code, save build artifacts, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
+
+variables:
+- name: version
+  value: 0.0.1
+
+trigger:
+- gui
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: NodeTool@0
+  inputs:
+    versionSpec: '10.x'
+  displayName: 'Install Node.js'
+
+- task: UsePythonVersion@0
+  inputs:
+    versionSpec: '3.8.3'
+    addToPath: true
+    architecture: 'x64'
+  displayName: Install Python
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    failOnStderr: false
+    script: |
+      python -m pip install --upgrade pip
+      python -m pip install wheel
+      python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
+      python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
+      python -m pip install https://github.com/librosa/librosa/zipball/master
+      $pyPath = python -c "import sys; print(sys.executable)"
+      $pyPath = Split-Path -Path $pyPath
+      $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
+      python -Wignore $pyPath -install
+  displayName: Install packages
+
+- script: |
+    npm install
+    tsc --build
+    yarn pack
+  displayName: 'Build app'
+
+- task: PowerShell@2
+  inputs:
+    targetType: 'inline'
+    script: |
+      $parsedversion = Get-Content latest.txt -First 1
+      $env:VERSION = $parsedversion
+      Write-Host "##vso[task.setvariable variable=version]$parsedversion"
+      "Using version: $($env:VERSION)"
+    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer/dist'
+  displayName: 'Parse version number to variable'
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/dist'
+    Contents: |
+      beat-map-synthesizer-win-$(version).exe
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
+    CleanTargetFolder: true
+    OverWrite: true
+  displayName: 'Stage app files'
+
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
+    ArtifactName: 'beat-map-synthesizer-win-$(version)'
+    publishLocation: 'Container'
+  displayName: 'Publish to Build Artifact'
