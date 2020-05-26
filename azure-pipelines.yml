@@ -29,7 +29,8 @@ steps:
       python -m pip install --upgrade pip
       python -m pip install wheel
       python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
-      python -m pip install git+https://github.com/librosa/librosa
+      git clone https://github.com/librosa/librosa.git
+      python -m pip install -e librosa
       python -m pip install -r ./BeatMapSynthesizer/build/scripts/requirements.txt
       python $AGENT_TOOLSDIRECTORY/Python/3.8.3/x64/Scripts/pywin32_postinstall.py
     workingDirectory: '$(Build.SourcesDirectory)'
