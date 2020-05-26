@@ -17,7 +17,8 @@
 		},
 		"publish": [
 			{
-				"provider": "github",
+				"provider": "generic",
+				"url": "localhost",
 				"owner": "TheAce0296",
 				"releaseType": "draft"
 			}
