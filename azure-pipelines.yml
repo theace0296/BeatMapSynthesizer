@@ -56,7 +56,7 @@ steps:
       $env:VERSION = $parsedversion
       Write-Host "##vso[task.setvariable variable=version]$parsedversion"
       "Using version: $($env:VERSION)"
-    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer/dist'
+    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Parse version number to variable'
 
 - task: CopyFiles@2
