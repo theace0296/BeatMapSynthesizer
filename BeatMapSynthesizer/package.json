@@ -19,7 +19,7 @@
 			{
 				"provider": "github",
 				"owner": "TheAce0296",
-				"releaseType": "prerelease"
+				"releaseType": "draft"
 			}
 		],
 		"files": [
@@ -76,13 +76,13 @@
 	"name": "beat-map-synthesizer",
 	"scripts": {
 		"prebuild": "pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
-		"build": "tsc --build",
-		"clean": "tsc --build && yarn dist",
+		"build": "tsc --build && echo %npm_package_version% > ./dist/latest.txt",
+		"clean": "tsc --build && yarn dist && echo %npm_package_version% > ./dist/latest.txt",
 		"start": "electron .",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder"
 	},
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"dependencies": {
 		"compare-versions": "3.6.0",
 		"flat-ui": "^2.1.1",
