@@ -43,7 +43,7 @@ steps:
   displayName: Install packages
 
 - script: |
-    npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist && echo %npm_package_version% > ./dist/latest.txt
+    npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist
   workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Build app'
 
@@ -51,7 +51,8 @@ steps:
   inputs:
     targetType: 'inline'
     script: |
-      $parsedversion = Get-Content latest.txt -First 1
+      $package = Get-Content -Raw -Path package.json | ConvertFrom-Json
+      $parsedversion = $package.version
       $env:VERSION = $parsedversion
       Write-Host "##vso[task.setvariable variable=version]$parsedversion"
       "Using version: $($env:VERSION)"
