@@ -43,7 +43,7 @@ steps:
   displayName: Install packages
 
 - script: |
-    npm install && tsc --build && yarn pack
+    npm install && tsc --build && yarn dist
   workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Build app'
 
