@@ -8,7 +8,7 @@
 
 Download the latest release from the [Releases](https://github.com/theace0296/BeatMapSynthesizer/releases) tab.
 
-Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is unsafe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
+Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is safe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
 
 Once open, the only required step is to specify the file(s) you want to generate Beat Maps for. You may also select the difficulty and model to use for the generation. Lastly, you can change the output directory for the generated .ZIP file, by default this is the same as the directoy the application is in. 
 
