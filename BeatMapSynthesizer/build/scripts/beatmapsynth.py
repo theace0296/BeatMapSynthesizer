@@ -12,10 +12,13 @@ import audioread
 from pydub import AudioSegment
 import markovify
 import sklearn.cluster
+import sklearn.utils
 import scipy
 import sys
 import argparse
 import shutil
+import warnings
+warnings.filterwarnings('ignore', "PySoundFile failed. Trying audioread instead.")
 
 """
 Class to load a music file and generate a custom Beat Saber map based on the specified model and difficulty. Outputs a zipped folder of necessary files to play the custom map in the Beat Saber game.
@@ -91,33 +94,6 @@ class Main:
                         'modulated_beat_list': []
                     }
                 }
-
-    def getListOfFilesInDirectory(self, path):
-        # Create a list of file and sub directories 
-        # Names in the given directory 
-        listOfFile = os.listdir(path)
-        allFiles = list()
-        # Iterate over all the entries
-        for entry in listOfFile:
-            # Create full path
-            fullPath = os.path.join(path, entry)
-            # If entry is a directory then get the list of files in this directory 
-            if os.path.isdir(fullPath):
-                allFiles = allFiles + self.getListOfFilesInDirectory(fullPath)
-            else:
-                allFiles.append(fullPath)
-        return allFiles
-
-    def getListOfMusicFiles(self, path):
-        # Get the list of all files in directory tree at given path
-        listOfFiles = self.getListOfFilesInDirectory(path)
-        listOfMusicFiles = []
-    
-        # Print the files
-        for file in listOfFiles:
-            if file.endswith(".mp3"):
-                listOfMusicFiles.append(file)
-        return listOfMusicFiles
 
     def getSongNameFromMetadata(self):
         song_name = 'default'
@@ -246,7 +222,8 @@ class Main:
         elif self.song_path.endswith('.ogg') or self.song_path.endswith('.egg'):
             shutil.copyfile(self.song_path, f"{self.workingDir}/song.egg")
         else:
-            print("Unsupported song file type. Choose a file of type .mp3, .wav, .flv, .raw, or .ogg.")
+            sys.stdout.write("Unsupported song file type. Choose a file of type .mp3, .wav, .flv, .raw, or .ogg.\n")
+            sys.stdout.flush()
 
     def eventsWriter(self, difficulty):
         """Placeholder function for writing a list of events to be incorporated into a beatmap file. May have future support."""
@@ -298,11 +275,14 @@ class Main:
     #Mapping Function
     def generateBeatMap(self):
         #Load song and get beat features
-        print(f"{self.song_name} | Loading Song...")
+        sys.stdout.write(f"{self.song_name} | Loading Song...\n")
+        sys.stdout.flush()
         self.tracks['bpm'], self.tracks['beat_times'], self.tracks['y'], self.tracks['sr'] = self.getBeatFeatures()
-        print(f"{self.song_name} | Song loaded successfully!")
+        sys.stdout.write(f"{self.song_name} | Song loaded successfully!\n")
+        sys.stdout.flush()
         #Write lists for note placement, event placement, and obstacle placement
-        print(f"{self.song_name} | Mapping...")
+        sys.stdout.write(f"{self.song_name} | Mapping...\n")
+        sys.stdout.flush()
         if self.difficulty.casefold() == 'ALL'.casefold():
             for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 self.tracks[diff.casefold()]['notes_list'] = self.runModel(diff.casefold()) #fixes _time != beat time
@@ -312,19 +292,25 @@ class Main:
             self.tracks[self.difficulty.casefold()]['notes_list'] = self.runModel(self.difficulty.casefold()) #fixes _time != beat time
             self.tracks[self.difficulty.casefold()]['events_list'] = self.eventsWriter(self.difficulty.casefold())
             self.tracks[self.difficulty.casefold()]['obstacles_list'] = self.obstaclesWriter(self.difficulty.casefold())
-        print(f"{self.song_name} | Mapping done!")
+        sys.stdout.write(f"{self.song_name} | Mapping done!\n")
+        sys.stdout.flush()
         #Write and zip files
-        print(f"{self.song_name} | Writing files to disk...")
+        sys.stdout.write(f"{self.song_name} | Writing files to disk...\n")
+        sys.stdout.flush()
         self.writeInfoFile()
         self.writeLevelFile()
-        print(f"{self.song_name} | Converting music file...")
+        sys.stdout.write(f"{self.song_name} | Converting music file...\n")
+        sys.stdout.flush()
         self.convertMusicFile()
-        print(f"{self.song_name} | Zipping folder...")
+        sys.stdout.write(f"{self.song_name} | Zipping folder...\n")
+        sys.stdout.flush()
         self.zipWriter()
         if (self.zipFiles):
-            print(f"{self.song_name} | Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
+            sys.stdout.write(f"{self.song_name} | Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory\n")
+            sys.stdout.flush()
         else:
-            print(f"{self.song_name} | Finished! Look for folder in {self.outDir}, and place in the 'CustomMusic' folder in the Beat Saber directory")
+            sys.stdout.write(f"{self.song_name} | Finished! Look for folder in {self.outDir}, and place in the 'CustomMusic' folder in the Beat Saber directory\n")
+            sys.stdout.flush()
     
     #Refractored model runner to allow for only a single mapping function
     def runModel(self, difficulty):
@@ -341,7 +327,8 @@ class Main:
             """This function generates the files for a custom map using a rate modulated segmented HMM model."""
             return self.rateModulatedSegmentedHMM_NotesWriter(difficulty)
         else:
-            print('Please specify model for mapping.')
+            sys.stdout.write('Please specify model for mapping.\n')
+            sys.stdout.flush()
 
     #Random Mapping Note Writer
     def random_NotesWriter(self, difficulty):
@@ -757,7 +744,9 @@ class Main:
         for index, value in beats.iterrows():
             if value['beat_count'] not in self.tracks[difficulty.casefold()]['modulated_beat_list']:
                 beats.drop(index = index, inplace=True)
-        merged_beats = pd.merge(left = beats, right = pd.Series(self.tracks[difficulty.casefold()]['modulated_beat_list'], name = 'beat_count'), how='outer', on='beat_count', sort = True)
+        leftDF = beats.astype('float64')
+        rightDF = pd.Series(self.tracks[difficulty.casefold()]['modulated_beat_list'], name = 'beat_count').astype('float64')
+        merged_beats = pd.merge(left = leftDF, right = rightDF, how='outer', on='beat_count', sort = True)
         merged_beats.interpolate(inplace=True)
         merged_beats.drop(columns = 'beat_count', inplace = True)
     
@@ -797,12 +786,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     
-    os.chdir(f"{args.workingDir}/scripts")
+    os.chdir(f"{args.workingDir}")
     
     testFile = open(f"{args.workingDir}/debug.log", 'w')
     testFile.write(f"Current working dir: {os.getcwd()}\n")
     testFile.write(f"Song path: {args.song_path}\n")
-    testFile.write(f"Song name:{args.song_name}\n")
+    testFile.write(f"Song name: {args.song_name}\n")
     testFile.write(f"Difficulty: {args.difficulty}\n")
     testFile.write(f"Model: {args.model}\n")
     testFile.write(f"K: {args.k}\n")

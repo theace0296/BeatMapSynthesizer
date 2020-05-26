@@ -42,12 +42,11 @@
 			"build/css/docs.css",
 			"build/css/flat-ui.css",
 			"build/images/beatMapSynth_Banner.jpg",
-			"build/scripts/beatmapsynth.py",
+			"build/scripts/beatmapsynth.exe",
 			"build/scripts/cover.jpg",
 			"build/scripts/ffmpeg.exe",
 			"build/scripts/ffplay.exe",
 			"build/scripts/ffprobe.exe",
-			"build/scripts/py_requirements.txt",
 			"build/scripts/models/HMM_easy.pkl",
 			"build/scripts/models/HMM_easy_v2.pkl",
 			"build/scripts/models/HMM_expert.pkl",
@@ -58,9 +57,11 @@
 			"build/scripts/models/HMM_hard_v2.pkl",
 			"build/scripts/models/HMM_normal.pkl",
 			"build/scripts/models/HMM_normal_v2.pkl",
-			"build/python/**/*",
 			"!*.map",
-			"!*.njsproj"
+			"!*.njsproj",
+			"!build/scripts/__pycache__",
+			"!build/scripts/beatmapsynth.py",
+			"!build/scripts/requirements.txt"
 		]
 	},
 	"devDependencies": {
@@ -74,13 +75,13 @@
 	"main": "app.js",
 	"name": "beat-map-synthesizer",
 	"scripts": {
-		"build": "tsc --build",
+		"build": "tsc --build && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
 		"clean": "tsc --build && yarn dist",
-		"start": "tsc --build && electron .",
+		"start": "electron .",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder --dir"
 	},
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"dependencies": {
 		"compare-versions": "3.6.0",
 		"flat-ui": "^2.1.1",

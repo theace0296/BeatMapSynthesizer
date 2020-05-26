@@ -58,6 +58,23 @@
                     <option value="rate_modulated_segmented_HMM">Rate-Modulated Segmented HMM</option>
                 </optgroup>
             </select>
+            <div id="dataSource" class="hidden">
+                <br />
+                <br />
+                <p>Select the data source for the model (default is '> 70% ratings')...</p>
+                <select id="datalist" name="datalist" value="Data Source" class="btn btn-block btn-default btn-primary dropdown-toggle">
+                    <optgroup label="Data Source">
+                        <option value="2">Maps with rating > 70%</option>
+                        <option value="1">Maps with rating > 90%</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div id="numSegments" class="hidden">
+                <br />
+                <br />
+                <p>Choose the number of segments for the model (default: 5)...</p>
+                <input id="numSegmentsInput" type="number" class="form-control" min="1" max="15" value="5" />
+            </div>
         </div>
         <h3 class="demo-panel-title">Select the directory to output files to..</h3>
         <div class="row">

@@ -56,11 +56,21 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('modellist').addEventListener('change', () => {
         args.model = document.getElementById('modellist').value.toString();
+        if (args.model.includes('HMM'))
+            document.getElementById('dataSource').classList.remove('hidden');
+        else
+            document.getElementById('dataSource').classList.add('hidden');
+        if (args.model.includes('segmented'))
+            document.getElementById('numSegments').classList.remove('hidden');
+        else
+            document.getElementById('numSegments').classList.add('hidden');
     });
     document.getElementById('generateBeatMapButton').addEventListener('click', () => {
         if (document.getElementById('taskLog').innerHTML !== "") {
             document.getElementById('taskLog').innerHTML = "";
         }
+        args.k = parseInt(document.getElementById('numSegmentsInput').value, 10);
+        args.version = parseInt(document.getElementById('datalist').value, 10);
         args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;
         electron_1.ipcRenderer.send('__generateBeatMap__', currentOperationType, selectedDirs, args);
     });

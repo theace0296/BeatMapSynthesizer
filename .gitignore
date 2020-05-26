@@ -147,3 +147,6 @@ dmypy.json
 !data/example_custom_maps/*/*.egg
 !generated_maps/*.zip
 !BeatMapSynthesizer/*/*
+BeatMapSynthesizer/build/scripts/models
+BeatMapSynthesizer/build/beatmapsynth
+!beatmapsynth.spec

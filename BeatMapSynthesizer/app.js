@@ -12,7 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // Modules to control application life and create native browser window
 const electron_1 = require("electron");
 const path = require("path");
-const python_shell_1 = require("python-shell");
+const child_process_1 = require("child_process");
 const mm = require("music-metadata");
 const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
@@ -101,22 +101,16 @@ class worker {
         // create the worker
         this.appPath = electron_1.app.getAppPath();
         this.appVersion = electron_1.app.getVersion();
-        this.pythonInternalPath = path.join(this.appPath, "build/python");
         this.scriptsInternalPath = path.join(this.appPath, "build/scripts");
-        this.tempDir = path.join(process.env.APPDATA, 'temp', 'beatmapsynthesizer');
-        this.options = {
-            mode: 'text',
-            pythonPath: path.join(this.tempDir, "python/python.exe"),
-            pythonOptions: ['-u']
-        };
+        this.tempDir = path.join(process.env.APPDATA, 'beat-map-synthesizer', 'temp');
+        this.exePath = path.join(this.tempDir, "beatmapsynth.exe");
         this.shellsRunning = 0;
     }
     // Class methods
     copyFiles() {
         return __awaiter(this, void 0, void 0, function* () {
             return new Promise(resolve => {
-                fsx.copy(this.scriptsInternalPath, path.join(this.tempDir, 'scripts'));
-                // Quick check to see if Python.exe was modified in the last day, this prevents unnecessarily copying the Python files
+                fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.exe'), path.join(this.tempDir, 'beatmapsynth.exe'));
                 let updateFiles = false;
                 if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
                     updateFiles = true;
@@ -125,9 +119,17 @@ class worker {
                     updateFiles = true;
                 }
                 if (updateFiles) {
-                    fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion).then(() => {
-                        fsx.copy(this.pythonInternalPath, path.join(this.tempDir, 'python'))
-                            .then(() => { resolve(updateFiles); });
+                    fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion)
+                        .then(() => {
+                        let files = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
+                            "models/HMM_easy.pkl", "models/HMM_easy_v2.pkl", "models/HMM_expert.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus.pkl",
+                            "models/HMM_expertPlus_v2.pkl", "models/HMM_hard.pkl", "models/HMM_hard_v2.pkl", "models/HMM_normal.pkl", "models/HMM_normal_v2.pkl"];
+                        for (let file of files) {
+                            fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+                        }
+                    })
+                        .then(() => {
+                        resolve(updateFiles);
                     });
                 }
                 else {
@@ -136,65 +138,82 @@ class worker {
             });
         });
     }
-    updatePython() {
-        return __awaiter(this, void 0, void 0, function* () {
-            _log('updatePython - Start');
-            return new Promise(resolve => {
-                python_shell_1.PythonShell.runString(`import subprocess;import sys;import os;subprocess.check_call([sys.executable, '-m', 'pip', 'install', '--upgrade', 'pip']);subprocess.check_call([sys.executable, '-m', 'pip', 'install', '-r', '${path.join(this.tempDir, '/scripts/py_requirements.txt').normalize().replace(/\\/gi, "/")}'])`, this.options, function () { })
-                    .on('message', function (message) {
-                    if (message.includes('Requirement already'))
-                        _log(message);
-                    else
-                        _appendMessageTaskLog(message);
-                })
-                    .on('stderr', function (err) {
-                    _log(err);
-                })
-                    .on('close', () => {
-                    _log('updatePython - Finished');
-                    resolve(true);
-                })
-                    .on('error', () => {
-                    _log('updatePython - Error');
-                    resolve(false);
-                });
-            });
-        });
-    }
     generateBeatMaps(dir, args) {
         return __awaiter(this, void 0, void 0, function* () {
             _log('generateBeatMaps - Start');
-            args.dir = dir;
-            let metadata = yield mm.parseFile(args.dir);
+            let metadata = yield mm.parseFile(dir);
             let trackname = sanitize(metadata.common.title);
             let artistname = sanitize(metadata.common.artist);
-            let temp_options = this.options;
-            temp_options.args = [
-                `${args.dir.normalize().replace(/\\/gi, "/")}`,
-                `${trackname} - ${artistname}`,
-                `${args.difficulty}`,
-                `${args.model}`,
+            let temp_args = [
+                `"${dir.normalize().replace(/\\/gi, "/")}"`,
+                `"${trackname} - ${artistname}"`,
+                `"${args.difficulty}"`,
+                `"${args.model}"`,
                 '-k', args.k.toString(),
                 '--version', args.version.toString(),
-                '--workingDir', this.tempDir.normalize().replace(/\\/gi, "/"),
-                '--outDir', args.outDir.normalize().replace(/\\/gi, "/"),
+                '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
+                '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
                 '--zipFiles', args.zipFiles.toString()
             ];
             let beatMapExists = (fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat')) || fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}.zip`)));
             return new Promise(resolve => {
                 if (!beatMapExists) {
-                    python_shell_1.PythonShell.run(path.join(this.tempDir, '/scripts/beatmapsynth.py'), temp_options, function (err, out) { })
-                        .on('message', (message) => {
-                        _appendMessageTaskLog(message);
-                    })
-                        .on('stderr', (err) => {
-                        _log(err);
-                    })
-                        .on('close', () => {
+                    let _remaining;
+                    function parseOut(data) {
+                        if (!data)
+                            return '';
+                        else if (typeof data !== 'string')
+                            _appendMessageTaskLog(data.toString());
+                        _appendMessageTaskLog(data);
+                    }
+                    ;
+                    function parseErr(data) {
+                        if (!data)
+                            return '';
+                        else if (typeof data !== 'string')
+                            _log(data.toString());
+                        _log(data);
+                    }
+                    ;
+                    function receiveInternal(data, emitType) {
+                        let parts = ('' + data).split(os_1.EOL);
+                        if (parts.length === 1) {
+                            // an incomplete record, keep buffering
+                            _remaining = (_remaining || '') + parts[0];
+                            return this;
+                        }
+                        let lastLine = parts.pop();
+                        // fix the first line with the remaining from the previous iteration of 'receive'
+                        parts[0] = (_remaining || '') + parts[0];
+                        // keep the remaining for the next iteration of 'receive'
+                        _remaining = lastLine;
+                        parts.forEach(function (part) {
+                            if (emitType == 'stdout')
+                                parseOut(part);
+                            else if (emitType == 'stderr')
+                                parseErr(part);
+                        });
+                        return this;
+                    }
+                    ;
+                    function receiveStdout(data) {
+                        return receiveInternal(data, 'stdout');
+                    }
+                    ;
+                    function receiveStderr(data) {
+                        return receiveInternal(data, 'stderr');
+                    }
+                    ;
+                    const shell = child_process_1.spawn(this.exePath, temp_args, { windowsVerbatimArguments: true });
+                    shell.on('close', () => {
                         _log('generateBeatMaps - Finished');
                         --this.shellsRunning;
                         resolve(true);
                     });
+                    shell.stdout.setEncoding('utf8');
+                    shell.stderr.setEncoding('utf8');
+                    shell.stdout.on('data', (buffer) => receiveStdout(buffer));
+                    shell.stderr.on('data', (buffer) => receiveStderr(buffer));
                 }
                 else {
                     --this.shellsRunning;
@@ -388,7 +407,7 @@ function _generateBeatMap(opType, dir, args) {
         // Files
         totalCount = dir.length;
     }
-    totalCount += 2;
+    totalCount += 1;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
     const mainWorker = new worker();
@@ -396,30 +415,25 @@ function _generateBeatMap(opType, dir, args) {
         currentCount += 1;
         _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
         _appendMessageTaskLog('Initialized Files!');
-        mainWorker.updatePython().then(() => {
-            currentCount += 1;
-            _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
-            _appendMessageTaskLog('Updated Python!');
-            let index = 0;
-            function generate() {
-                while (mainWorker.shellsRunning < coreCount && index < dir.length) {
-                    mainWorker.shellsRunning += 1;
-                    index += 1;
-                    mainWorker.generateBeatMaps(dir[index], args).then(() => {
-                        currentCount += 1;
-                        _updateTaskProgress(currentCount, totalCount);
-                        _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
-                        if (index == (dir.length - 1) && mainWorker.shellsRunning == 0) {
-                            _updateTaskProgress(totalCount, totalCount);
-                            _appendMessageTaskLog('Beat Map Synthesizer Finished!');
-                            return;
-                        }
-                        generate();
-                    });
-                }
+        let index = -1;
+        function generate() {
+            while (mainWorker.shellsRunning < coreCount && index < (dir.length - 1)) {
+                mainWorker.shellsRunning += 1;
+                index += 1;
+                mainWorker.generateBeatMaps(dir[index], args).then(() => {
+                    currentCount += 1;
+                    _updateTaskProgress(currentCount, totalCount);
+                    _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
+                    if (index == (dir.length - 1) && mainWorker.shellsRunning == 0) {
+                        _updateTaskProgress(totalCount, totalCount);
+                        _appendMessageTaskLog('Beat Map Synthesizer Finished!');
+                        return;
+                    }
+                    generate();
+                });
             }
-            generate();
-        });
+        }
+        generate();
     });
 }
 /**
