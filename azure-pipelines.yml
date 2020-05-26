@@ -43,10 +43,8 @@ steps:
   displayName: Install packages
 
 - script: |
-    cd $(Build.SourcesDirectory)/BeatMapSynthesizer 
-    npm install
-    tsc --build
-    yarn pack
+    npm install && tsc --build && yarn pack
+  workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Build app'
 
 - task: PowerShell@2
