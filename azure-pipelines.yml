@@ -35,7 +35,7 @@ steps:
       $pyPath = python -c "import sys; print(sys.executable)"
       $pyPath = Split-Path -Path $pyPath
       $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
-      python $pyPath -install
+      python -Wignore $pyPath -install
   displayName: Install packages
 
 - script: |
