@@ -33,7 +33,6 @@ steps:
       python -m pip install -e librosa
       python -m pip install -r ./BeatMapSynthesizer/build/scripts/requirements.txt
       python $AGENT_TOOLSDIRECTORY/Python/3.8.3/x64/Scripts/pywin32_postinstall.py
-    workingDirectory: '$(Build.SourcesDirectory)'
   displayName: Install packages
 
 - script: |
