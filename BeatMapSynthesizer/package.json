@@ -75,7 +75,8 @@
 	"main": "app.js",
 	"name": "beat-map-synthesizer",
 	"scripts": {
-		"build": "tsc --build && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
+		"prebuild": "pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
+		"build": "tsc --build",
 		"clean": "tsc --build && yarn dist",
 		"start": "electron .",
 		"dist": "electron-builder -p always",
