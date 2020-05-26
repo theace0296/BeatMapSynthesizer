@@ -43,7 +43,7 @@ steps:
   displayName: Install packages
 
 - script: |
-    npm install && tsc --build && yarn dist
+    npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist && echo %npm_package_version% > ./dist/latest.txt
   workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Build app'
 
