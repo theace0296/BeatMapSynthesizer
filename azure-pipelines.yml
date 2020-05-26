@@ -25,6 +25,7 @@ steps:
 - task: PowerShell@2
   inputs:
     targetType: 'inline'
+    failOnStderr: false
     script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
