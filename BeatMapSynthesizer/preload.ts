@@ -95,12 +95,12 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('outputDirList').appendChild(document.createElement('li').appendChild(document.createTextNode(args.outDir)));
 })
 
-ipcRenderer.on('console-log', (event, message: string) => console.log(message));
+ipcRenderer.on('console-log', (_event, message: string) => console.log(message));
 
-ipcRenderer.on('console-error', (event, message: string) => console.error(message));
+ipcRenderer.on('console-error', (_event, message: string) => console.error(message));
 
 
-ipcRenderer.on('task-progress', (event, value: number, maxValue: number) => {
+ipcRenderer.on('task-progress', (_event, value: number, maxValue: number) => {
     if (value === 0) {
         document.getElementById('taskProgressBar').innerHTML = `0%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 0%;`);
@@ -119,9 +119,9 @@ ipcRenderer.on('task-progress', (event, value: number, maxValue: number) => {
     }
 });
 
-ipcRenderer.on('task-log-append-message', (event, message: string) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
+ipcRenderer.on('task-log-append-message', (_event, message: string) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
 
-ipcRenderer.on('selectFilesDirs-finished', (event, param: string[]) => {
+ipcRenderer.on('selectFilesDirs-finished', (_event, param: string[]) => {
     selectedDirs.length = 0;
     for (let value of param) {
         // Append filename to varaible
@@ -134,7 +134,7 @@ ipcRenderer.on('selectFilesDirs-finished', (event, param: string[]) => {
     }
 });
 
-ipcRenderer.on('selectOutDirectory-finished', (event, param: string) => {
+ipcRenderer.on('selectOutDirectory-finished', (_event, param: string) => {
     // Append filename to varaible
     args.outDir = param;
     // Create the list item and set its contents

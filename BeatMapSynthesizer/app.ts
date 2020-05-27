@@ -1,7 +1,7 @@
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain, dialog, ProgressBarOptions } from 'electron';
 import * as path from "path";
-import { spawn, SpawnOptions } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
@@ -103,6 +103,7 @@ class worker {
     tempDir: string;
     exePath: string;
     shellsRunning: number;
+    shells: ChildProcess[];
 
     // Constructor
     constructor() {
@@ -113,6 +114,7 @@ class worker {
         this.tempDir = path.join(process.env.APPDATA, 'beat-map-synthesizer', 'temp');
         this.exePath = path.join(this.tempDir, "beatmapsynth.exe");
         this.shellsRunning = 0;
+        this.shells = [];
     }
 
     // Class methods
@@ -172,19 +174,15 @@ class worker {
             if (!beatMapExists) {
                 let _remaining: string;
 
-                function parseOut(data) {
+                function parseOut(data: string) {
                     if (!data)
                         return '';
-                    else if (typeof data !== 'string')
-                        _appendMessageTaskLog(data.toString());
                     _appendMessageTaskLog(data);
                 };
 
-                function parseErr(data) {
+                function parseErr(data: string) {
                     if (!data)
                         return '';
-                    else if (typeof data !== 'string')
-                        _log(data.toString());
                     _log(data);
                 };
 
@@ -222,6 +220,7 @@ class worker {
                 };
 
                 const shell = spawn(this.exePath, temp_args, { windowsVerbatimArguments: true });
+                this.shells.push(shell);
 
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
@@ -247,7 +246,32 @@ class worker {
             }
         });
     }
+
+    async killAllShells() {
+        return new Promise(resolve => {
+            let shellsKilledSuccessfully = 0;
+            for (let shell of this.shells) {
+                shell.kill();
+                if (shell.killed) {
+                    shellsKilledSuccessfully++;
+                }
+            }
+
+            if (shellsKilledSuccessfully === this.shells.length) {
+                this.shells.length = 0;
+                resolve(true);
+            }
+            else {
+                resolve(false);
+            }
+        });
+    }
 }
+
+/**
+ * `mainWorker` is the worker class that runs the operations.
+ */
+const mainWorker = new worker();
 
 /**
  * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
@@ -313,27 +337,6 @@ function _appendMessageTaskLog(message: string) {
 };
 
 /**
- * `countFilesInDir` is a function that recursively counts the files that match a filter in a directory.
- * @param startPath The top-most level to start the search in.
- * @param filter A regular expression filter to filter the search results.
- * @returns An array of files found during the search.
- */
-function countFilesInDir(startPath: string, filter: RegExp) {
-    var results: string[] = [];
-    const files = fsx.readdirSync(startPath);
-    for (let i = 0; i < files.length; i++) {
-        const filename = path.join(startPath, files[i]);
-        const stat = fsx.lstatSync(filename);
-        if (stat.isDirectory()) {
-            results = results.concat(countFilesInDir(filename, filter));
-        } else if (filter.test(filename)) {
-            results.push(filename);
-        }
-    }
-    return results;
-}
-
-/**
  * `findFilesInDir` is a function that recursively searches the files that match a filter in a directory 
  * and runs a callback on each file.
  * @param startPath The top-most level to start the search in.
@@ -355,18 +358,20 @@ function findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
 
 /**
  * `__cancelOperation__` is a inter-process communication channel for stopping the current operation.
- * @param event  The inter-process communication sender of `__cancelOperation__`.
+ * @param _event  The inter-process communication sender of `__cancelOperation__`.
  */
-ipcMain.on('__cancelOperation__', async (event) => {
-    // Integrate this IPC for canceling the beat map generation...
+ipcMain.on('__cancelOperation__', async (_event) => {
+    mainWorker.killAllShells().then(() => {
+        _appendMessageTaskLog("Beat Map Generation Canceled!");
+    });
 });
 
 /**
  * `__selectDirectory__` is a inter-process communication channel for opening a native OS directory selection dialog.
- * @param event  The inter-process communication sender of `__selectDirectory__`.
+ * @param _event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectDirectory__', (event) => {
+ipcMain.on('__selectDirectory__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -376,7 +381,7 @@ ipcMain.on('__selectDirectory__', (event) => {
     dialog.showOpenDialog(mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
-                event.sender.send("selectFilesDirs-finished", dirs.filePaths);
+                _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
             }
         }).catch((err: string) => {
             _error(err);
@@ -385,10 +390,10 @@ ipcMain.on('__selectDirectory__', (event) => {
 
 /**
  * `__selectFiles__` is a inter-process communication channel for opening a native OS file selection dialog.
- * @param event  The inter-process communication sender of `__selectFiles__`.
+ * @param _event  The inter-process communication sender of `__selectFiles__`.
  * @returns      The `__selectFiles__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectFiles__', (event) => {
+ipcMain.on('__selectFiles__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select an audio file',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -400,7 +405,7 @@ ipcMain.on('__selectFiles__', (event) => {
     dialog.showOpenDialog(mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
-                event.sender.send("selectFilesDirs-finished", dirs.filePaths);
+                _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
             }
         }).catch((err: string) => {
             _error(err);
@@ -409,10 +414,10 @@ ipcMain.on('__selectFiles__', (event) => {
 
 /**
  * `__selectDirectory__` is a inter-process communication channel for opening a native OS directory selection dialog.
- * @param event  The inter-process communication sender of `__selectDirectory__`.
+ * @param _event  The inter-process communication sender of `__selectDirectory__`.
  * @returns      The `__selectDirectory__` channel will send the results of the dialog back to the event sender.
  */
-ipcMain.on('__selectOutDirectory__', (event) => {
+ipcMain.on('__selectOutDirectory__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
@@ -422,7 +427,7 @@ ipcMain.on('__selectOutDirectory__', (event) => {
     dialog.showOpenDialog(mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
-                event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
+                _event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
             }
         }).catch((err: string) => {
             _error(err);
@@ -444,7 +449,7 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
         let newDir: string[] = [];
         
         dir.forEach((folder: string) => {
-            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file) => { newDir.push(file); });
+            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file: string) => { newDir.push(file); });
         });
         totalCount = newDir.length;
         dir = newDir;
@@ -457,8 +462,6 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
     totalCount += 1;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
-
-    const mainWorker = new worker();
 
     mainWorker.copyFiles().then(() => {
         currentCount += 1;
@@ -490,11 +493,11 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
 
 /**
  * `__generateBeatMap__` is a inter-process communication channel for starting the beat map generation.
- * @param event  The inter-process communication sender of `__generateBeatMap__`.
+ * @param _event  The inter-process communication sender of `__generateBeatMap__`.
  * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-ipcMain.on('__generateBeatMap__', (event, opType: number, dir: string[], args: beatMapArgs) => {
+ipcMain.on('__generateBeatMap__', (_event, opType: number, dir: string[], args: beatMapArgs) => {
     _generateBeatMap(opType, dir, args);
 });

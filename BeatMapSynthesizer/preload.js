@@ -79,9 +79,9 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('outputDirList').appendChild(document.createElement('li').appendChild(document.createTextNode(args.outDir)));
 });
-electron_1.ipcRenderer.on('console-log', (event, message) => console.log(message));
-electron_1.ipcRenderer.on('console-error', (event, message) => console.error(message));
-electron_1.ipcRenderer.on('task-progress', (event, value, maxValue) => {
+electron_1.ipcRenderer.on('console-log', (_event, message) => console.log(message));
+electron_1.ipcRenderer.on('console-error', (_event, message) => console.error(message));
+electron_1.ipcRenderer.on('task-progress', (_event, value, maxValue) => {
     if (value === 0) {
         document.getElementById('taskProgressBar').innerHTML = `0%`;
         document.getElementById('taskProgressBar').setAttribute('style', `width: 0%;`);
@@ -99,8 +99,8 @@ electron_1.ipcRenderer.on('task-progress', (event, value, maxValue) => {
         document.getElementById('taskProgressBar').setAttribute('style', `width: ${(value / maxValue) * 100}%;`);
     }
 });
-electron_1.ipcRenderer.on('task-log-append-message', (event, message) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
-electron_1.ipcRenderer.on('selectFilesDirs-finished', (event, param) => {
+electron_1.ipcRenderer.on('task-log-append-message', (_event, message) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
+electron_1.ipcRenderer.on('selectFilesDirs-finished', (_event, param) => {
     selectedDirs.length = 0;
     for (let value of param) {
         // Append filename to varaible
@@ -112,7 +112,7 @@ electron_1.ipcRenderer.on('selectFilesDirs-finished', (event, param) => {
         document.getElementById('dirsfilesList').appendChild(item);
     }
 });
-electron_1.ipcRenderer.on('selectOutDirectory-finished', (event, param) => {
+electron_1.ipcRenderer.on('selectOutDirectory-finished', (_event, param) => {
     // Append filename to varaible
     args.outDir = param;
     // Create the list item and set its contents
