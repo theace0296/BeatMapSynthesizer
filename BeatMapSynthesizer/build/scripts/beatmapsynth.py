@@ -45,6 +45,10 @@ class Main:
         if song_name is None:
             song_name = self.getSongNameFromMetadata()
         self.song_name = song_name
+        self.seed = 0
+        for char in song_name:
+            seed = int(f"{seed}{ord(char)}")
+        np.random.seed(seed)
         self.difficulty = difficulty
         self.model = model
         if k is None:
