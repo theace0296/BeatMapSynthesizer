@@ -2,9 +2,9 @@
 // It has the same sandbox as a Chrome extension.
 import { ipcRenderer } from "electron";
 /**
- * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
-class beatMapArgs {
+class __beatMapArgs {
     dir: string;
     difficulty: string;
     model: string;
@@ -24,12 +24,9 @@ class beatMapArgs {
     }
 }
 
-let args: beatMapArgs = new beatMapArgs();
+let args: __beatMapArgs = new __beatMapArgs();
 
 let selectedDirs: string[] = [];
-args.difficulty = 'all';
-args.model = 'random';
-args.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
 
 class operationType {
     static directory: number = 0;

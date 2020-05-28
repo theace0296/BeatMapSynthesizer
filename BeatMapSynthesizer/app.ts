@@ -8,89 +8,23 @@ import * as compareVersions from 'compare-versions';
 import { EOL as newline, cpus, totalmem } from 'os';
 const sanitize = require('sanitize-filename');
 
-const coreCount: number = calcUsableCores();
-
 /**
- * `calcUsableCores` calculates the 'usable' cores for running multiple beat map generations at once.
+ * `__coreCount` is the 'usable' cores for running multiple beat map generations at once.
  * It is based off of the average system resource usage and will fallback to one processes at a time
- * if system resources are not plentiful. 
+ * if system resources are not plentiful.
  * Reserve 2 cores, if possible, for system usage.
  * 1073741824 is 1024MB in Bytes.
  */
-function calcUsableCores(): number {
+const __coreCount: number = (() => {
     let workingCores: number = cpus().length > 2 ? cpus().length - 2 : 1;
-    if (totalmem() >= (workingCores * 1073741824)) {
+    if(totalmem() >= (workingCores * 1073741824)) {
         return workingCores;
     }
     else if ((totalmem() / 1073741824) <= workingCores) {
         return Math.floor(totalmem() / 1073741824);
     }
-    else {
-        return workingCores;
-    }
-}
-
-/**
- * `mainWindow` is the render process window the user interacts with.
- */
-let mainWindow: Electron.BrowserWindow;
-
-/**
- * This method will be called when Electron has finished
- * initialization and is ready to create browser windows.
- * Some APIs can only be used after this event occurs.
- */
-app.on('ready', async () => {
-    createMainWindow();
-    app.on('activate', () => {
-        // On macOS it's common to re-create a window in the app when the
-        // dock icon is clicked and there are no other windows open.
-        if (BrowserWindow.getAllWindows().length === 0)
-            createMainWindow();
-    });
-})
-
-/**
- * Quit when all windows are closed.
- * On OS X it is common for applications and their menu bar
- * to stay active until the user quits explicitly with Cmd + Q.
- */
-app.on('window-all-closed', () => {
-    // On macOS it is common for applications and their menu bar
-    // to stay active until the user quits explicitly with Cmd + Q
-    if (process.platform !== 'darwin')
-        app.quit();
-})
-
-/**
- * `createMainWindow()` is responsible for the initial creation of the main window.
- */
-function createMainWindow() {
-    // Create the browser window.
-    mainWindow = new BrowserWindow({
-        width: 800,
-        height: 600,
-        autoHideMenuBar: true,
-        webPreferences: {
-            preload: path.join(app.getAppPath(), 'preload.js')
-        }
-    });
-
-    // and load the index.html of the app.
-    mainWindow.loadFile(path.join(app.getAppPath().toString(), "index.html"));
-
-    // Open the DevTools.
-    // mainWindow.webContents.openDevTools()
-
-    // Emitted when the window is closed.
-    mainWindow.on("closed", () => {
-        // Dereference the window object, usually you would store windows
-        // in an array if your app supports multi windows, this is the time
-        // when you should delete the corresponding element.
-        mainWindow = null;
-    });
-
-}
+    return workingCores;
+})();
 
 /**
  * `worker` is a class for creating hidden processes that are responsible for running operations.
@@ -101,9 +35,9 @@ class worker {
     appVersion: string;
     scriptsInternalPath: string;
     tempDir: string;
-    exePath: string;
+    pythonExePath: string;
     shellsRunning: number;
-    shells: ChildProcess[];
+    activeShells: ChildProcess[];
 
     // Constructor
     constructor() {
@@ -112,13 +46,13 @@ class worker {
         this.appVersion = app.getVersion();
         this.scriptsInternalPath = path.join(this.appPath, "build/scripts");
         this.tempDir = path.join(process.env.APPDATA, 'beat-map-synthesizer', 'temp');
-        this.exePath = path.join(this.tempDir, "beatmapsynth.exe");
+        this.pythonExePath = path.join(this.tempDir, "beatmapsynth.exe");
         this.shellsRunning = 0;
-        this.shells = [];
+        this.activeShells = [];
     }
 
     // Class methods
-    async copyFiles(): Promise<boolean> {
+    async initFiles(): Promise<boolean> {
         return new Promise(resolve => {
             fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.exe'), path.join(this.tempDir, 'beatmapsynth.exe'));
             let updateFiles = false;
@@ -150,7 +84,7 @@ class worker {
         });
     }
 
-    async generateBeatMaps(dir: string, args: beatMapArgs): Promise<boolean> {
+    async generateBeatMaps(dir: string, args: __beatMapArgs): Promise<boolean> {
         _log('generateBeatMaps - Start');
         let metadata: mm.IAudioMetadata = await mm.parseFile(dir);
         let trackname: string = sanitize(metadata.common.title);
@@ -219,8 +153,8 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 };
 
-                const shell = spawn(this.exePath, temp_args, { windowsVerbatimArguments: true });
-                this.shells.push(shell);
+                const shell = spawn(this.pythonExePath, temp_args, { windowsVerbatimArguments: true });
+                this.activeShells.push(shell);
 
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
@@ -238,7 +172,7 @@ class worker {
                 setTimeout(() => {
                     shell.kill();
                 }, 120000);
-                
+
             }
             else {
                 --this.shellsRunning;
@@ -249,16 +183,16 @@ class worker {
 
     async killAllShells() {
         return new Promise(resolve => {
-            let shellsKilledSuccessfully = 0;
-            for (let shell of this.shells) {
+            let shellsKilledSuccessfully: number = 0;
+            for (let shell of this.activeShells) {
                 shell.kill();
                 if (shell.killed) {
                     shellsKilledSuccessfully++;
                 }
             }
 
-            if (shellsKilledSuccessfully === this.shells.length) {
-                this.shells.length = 0;
+            if (shellsKilledSuccessfully === this.activeShells.length) {
+                this.activeShells.length = 0;
                 resolve(true);
             }
             else {
@@ -269,14 +203,9 @@ class worker {
 }
 
 /**
- * `mainWorker` is the worker class that runs the operations.
+ * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
-const mainWorker = new worker();
-
-/**
- * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
- */
-class beatMapArgs {
+class __beatMapArgs {
     dir: string;
     difficulty: string;
     model: string;
@@ -297,11 +226,78 @@ class beatMapArgs {
 }
 
 /**
+ * `__mainWindow` is the render process window the user interacts with.
+ */
+let __mainWindow: Electron.BrowserWindow;
+
+/**
+ * `__mainWorker` is the worker class that runs the operations.
+ */
+const __mainWorker = new worker();
+
+/**
+ * This method will be called when Electron has finished
+ * initialization and is ready to create browser windows.
+ * Some APIs can only be used after this event occurs.
+ */
+app.on('ready', async () => {
+    _createMainWindow();
+    app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (BrowserWindow.getAllWindows().length === 0)
+            _createMainWindow();
+    });
+})
+
+/**
+ * Quit when all windows are closed.
+ * On OS X it is common for applications and their menu bar
+ * to stay active until the user quits explicitly with Cmd + Q.
+ */
+app.on('window-all-closed', () => {
+    // On macOS it is common for applications and their menu bar
+    // to stay active until the user quits explicitly with Cmd + Q
+    if (process.platform !== 'darwin')
+        app.quit();
+})
+
+/**
+ * `_createMainWindow()` is responsible for the initial creation of the main window.
+ */
+function _createMainWindow() {
+    // Create the browser window.
+    __mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        autoHideMenuBar: true,
+        webPreferences: {
+            preload: path.join(app.getAppPath(), 'preload.js')
+        }
+    });
+
+    // and load the index.html of the app.
+    __mainWindow.loadFile(path.join(app.getAppPath().toString(), "index.html"));
+
+    // Open the DevTools.
+    // mainWindow.webContents.openDevTools()
+
+    // Emitted when the window is closed.
+    __mainWindow.on("closed", () => {
+        // Dereference the window object, usually you would store windows
+        // in an array if your app supports multi windows, this is the time
+        // when you should delete the corresponding element.
+        __mainWindow = null;
+    });
+
+}
+
+/**
  * `_log()` is responsible for sending log messages to the Chromium Console.
  * @param message  The message to be sent to the console.
  */
 function _log(message: string) {
-    mainWindow.webContents.send('console-log', message);
+    __mainWindow.webContents.send('console-log', message);
 }
 
 /**
@@ -309,7 +305,7 @@ function _log(message: string) {
  * @param message  The message to be sent to the console.
  */
 function _error(message: string) {
-    mainWindow.webContents.send('console-error', message);
+    __mainWindow.webContents.send('console-error', message);
 }
 
 /**
@@ -320,11 +316,11 @@ function _error(message: string) {
  * @param options The options to pass to the progress bar, the default is { mode: 'normal' }
  */
 function _updateTaskProgress(value: number, maxValue: number, options: ProgressBarOptions = { mode: 'normal' }) {
-    mainWindow.webContents.send('task-progress', value, maxValue);
+    __mainWindow.webContents.send('task-progress', value, maxValue);
     if ((value / maxValue) < 1)
-        mainWindow.setProgressBar(value / maxValue, options);
+        __mainWindow.setProgressBar(value / maxValue, options);
     else
-        mainWindow.setProgressBar(-1);
+        __mainWindow.setProgressBar(-1);
 }
 
 /**
@@ -333,23 +329,23 @@ function _updateTaskProgress(value: number, maxValue: number, options: ProgressB
  * @param message  The message to be sent to the task log.
  */
 function _appendMessageTaskLog(message: string) {
-    mainWindow.webContents.send('task-log-append-message', message)
+    __mainWindow.webContents.send('task-log-append-message', message)
 };
 
 /**
- * `findFilesInDir` is a function that recursively searches the files that match a filter in a directory 
+ * `_findFilesInDir` is a function that recursively searches the files that match a filter in a directory
  * and runs a callback on each file.
  * @param startPath The top-most level to start the search in.
  * @param filter A regular expression filter to filter the search results.
  * @param callback A function to have run on each file.
  */
-function findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
+function _findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
     const files = fsx.readdirSync(startPath);
     for (let i = 0; i < files.length; i++) {
         const filename = path.join(startPath, files[i]);
         const stat = fsx.lstatSync(filename);
         if (stat.isDirectory()) {
-            findFilesInDir(filename, filter, callback);
+            _findFilesInDir(filename, filter, callback);
         } else if (filter.test(filename)) {
             callback(filename);
         }
@@ -361,7 +357,7 @@ function findFilesInDir(startPath: string, filter: RegExp, callback: Function) {
  * @param _event  The inter-process communication sender of `__cancelOperation__`.
  */
 ipcMain.on('__cancelOperation__', async (_event) => {
-    mainWorker.killAllShells().then(() => {
+    __mainWorker.killAllShells().then(() => {
         _appendMessageTaskLog("Beat Map Generation Canceled!");
     });
 });
@@ -378,7 +374,7 @@ ipcMain.on('__selectDirectory__', (_event) => {
         properties: ['openDirectory', 'multiSelections']
     };
 
-    dialog.showOpenDialog(mainWindow, options)
+    dialog.showOpenDialog(__mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
                 _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
@@ -402,7 +398,7 @@ ipcMain.on('__selectFiles__', (_event) => {
         properties: ['openFile', 'multiSelections']
     };
 
-    dialog.showOpenDialog(mainWindow, options)
+    dialog.showOpenDialog(__mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
                 _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
@@ -424,7 +420,7 @@ ipcMain.on('__selectOutDirectory__', (_event) => {
         properties: ['openDirectory']
     };
 
-    dialog.showOpenDialog(mainWindow, options)
+    dialog.showOpenDialog(__mainWindow, options)
         .then((dirs: Electron.OpenDialogReturnValue) => {
             if (!dirs.canceled) {
                 _event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
@@ -435,12 +431,12 @@ ipcMain.on('__selectOutDirectory__', (_event) => {
 });
 
 /**
- * `_generateBeatMap` is a function for starting the beat map generation.
+ * `_generateBeatMaps` is a function for starting the beat map generation.
  * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
+function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
     let totalCount = 0;
     let currentCount = 0;
 
@@ -449,7 +445,7 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
         let newDir: string[] = [];
         
         dir.forEach((folder: string) => {
-            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file: string) => { newDir.push(file); });
+            _findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file: string) => { newDir.push(file); });
         });
         totalCount = newDir.length;
         dir = newDir;
@@ -463,21 +459,21 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
 
-    mainWorker.copyFiles().then(() => {
+    __mainWorker.initFiles().then(() => {
         currentCount += 1;
         _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
         _appendMessageTaskLog('Initialized Files!');
 
         let index = -1;
         function generate() {
-            while (mainWorker.shellsRunning < coreCount && index < (dir.length - 1)) {
-                mainWorker.shellsRunning += 1;
+            while (__mainWorker.shellsRunning < __coreCount && index < (dir.length - 1)) {
+                __mainWorker.shellsRunning += 1;
                 index += 1;
-                mainWorker.generateBeatMaps(dir[index], args).then(() => {
+                __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
                     _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
-                    if (index == (dir.length - 1) && mainWorker.shellsRunning == 0) {
+                    if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
                         return;
@@ -498,6 +494,6 @@ function _generateBeatMap(opType: number, dir: string[], args: beatMapArgs) {
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-ipcMain.on('__generateBeatMap__', (_event, opType: number, dir: string[], args: beatMapArgs) => {
-    _generateBeatMap(opType, dir, args);
+ipcMain.on('__generateBeatMap__', (_event, opType: number, dir: string[], args: __beatMapArgs) => {
+    _generateBeatMaps(opType, dir, args);
 });

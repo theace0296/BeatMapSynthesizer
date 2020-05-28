@@ -9,15 +9,14 @@ const fsx = require("fs-extra");
 const compareVersions = require("compare-versions");
 const os_1 = require("os");
 const sanitize = require('sanitize-filename');
-const coreCount = calcUsableCores();
 /**
- * `calcUsableCores` calculates the 'usable' cores for running multiple beat map generations at once.
+ * `__coreCount` is the 'usable' cores for running multiple beat map generations at once.
  * It is based off of the average system resource usage and will fallback to one processes at a time
  * if system resources are not plentiful.
  * Reserve 2 cores, if possible, for system usage.
  * 1073741824 is 1024MB in Bytes.
  */
-function calcUsableCores() {
+const __coreCount = (() => {
     let workingCores = os_1.cpus().length > 2 ? os_1.cpus().length - 2 : 1;
     if (os_1.totalmem() >= (workingCores * 1073741824)) {
         return workingCores;
@@ -25,64 +24,8 @@ function calcUsableCores() {
     else if ((os_1.totalmem() / 1073741824) <= workingCores) {
         return Math.floor(os_1.totalmem() / 1073741824);
     }
-    else {
-        return workingCores;
-    }
-}
-/**
- * `mainWindow` is the render process window the user interacts with.
- */
-let mainWindow;
-/**
- * This method will be called when Electron has finished
- * initialization and is ready to create browser windows.
- * Some APIs can only be used after this event occurs.
- */
-electron_1.app.on('ready', async () => {
-    createMainWindow();
-    electron_1.app.on('activate', () => {
-        // On macOS it's common to re-create a window in the app when the
-        // dock icon is clicked and there are no other windows open.
-        if (electron_1.BrowserWindow.getAllWindows().length === 0)
-            createMainWindow();
-    });
-});
-/**
- * Quit when all windows are closed.
- * On OS X it is common for applications and their menu bar
- * to stay active until the user quits explicitly with Cmd + Q.
- */
-electron_1.app.on('window-all-closed', () => {
-    // On macOS it is common for applications and their menu bar
-    // to stay active until the user quits explicitly with Cmd + Q
-    if (process.platform !== 'darwin')
-        electron_1.app.quit();
-});
-/**
- * `createMainWindow()` is responsible for the initial creation of the main window.
- */
-function createMainWindow() {
-    // Create the browser window.
-    mainWindow = new electron_1.BrowserWindow({
-        width: 800,
-        height: 600,
-        autoHideMenuBar: true,
-        webPreferences: {
-            preload: path.join(electron_1.app.getAppPath(), 'preload.js')
-        }
-    });
-    // and load the index.html of the app.
-    mainWindow.loadFile(path.join(electron_1.app.getAppPath().toString(), "index.html"));
-    // Open the DevTools.
-    // mainWindow.webContents.openDevTools()
-    // Emitted when the window is closed.
-    mainWindow.on("closed", () => {
-        // Dereference the window object, usually you would store windows
-        // in an array if your app supports multi windows, this is the time
-        // when you should delete the corresponding element.
-        mainWindow = null;
-    });
-}
+    return workingCores;
+})();
 /**
  * `worker` is a class for creating hidden processes that are responsible for running operations.
  */
@@ -94,12 +37,12 @@ class worker {
         this.appVersion = electron_1.app.getVersion();
         this.scriptsInternalPath = path.join(this.appPath, "build/scripts");
         this.tempDir = path.join(process.env.APPDATA, 'beat-map-synthesizer', 'temp');
-        this.exePath = path.join(this.tempDir, "beatmapsynth.exe");
+        this.pythonExePath = path.join(this.tempDir, "beatmapsynth.exe");
         this.shellsRunning = 0;
-        this.shells = [];
+        this.activeShells = [];
     }
     // Class methods
-    async copyFiles() {
+    async initFiles() {
         return new Promise(resolve => {
             fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.exe'), path.join(this.tempDir, 'beatmapsynth.exe'));
             let updateFiles = false;
@@ -189,8 +132,8 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 }
                 ;
-                const shell = child_process_1.spawn(this.exePath, temp_args, { windowsVerbatimArguments: true });
-                this.shells.push(shell);
+                const shell = child_process_1.spawn(this.pythonExePath, temp_args, { windowsVerbatimArguments: true });
+                this.activeShells.push(shell);
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
                     --this.shellsRunning;
@@ -213,14 +156,14 @@ class worker {
     async killAllShells() {
         return new Promise(resolve => {
             let shellsKilledSuccessfully = 0;
-            for (let shell of this.shells) {
+            for (let shell of this.activeShells) {
                 shell.kill();
                 if (shell.killed) {
                     shellsKilledSuccessfully++;
                 }
             }
-            if (shellsKilledSuccessfully === this.shells.length) {
-                this.shells.length = 0;
+            if (shellsKilledSuccessfully === this.activeShells.length) {
+                this.activeShells.length = 0;
                 resolve(true);
             }
             else {
@@ -230,13 +173,9 @@ class worker {
     }
 }
 /**
- * `mainWorker` is the worker class that runs the operations.
+ * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
-const mainWorker = new worker();
-/**
- * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
- */
-class beatMapArgs {
+class __beatMapArgs {
     constructor() {
         this.dir = '';
         this.difficulty = 'all';
@@ -248,18 +187,76 @@ class beatMapArgs {
     }
 }
 /**
+ * `__mainWindow` is the render process window the user interacts with.
+ */
+let __mainWindow;
+/**
+ * `__mainWorker` is the worker class that runs the operations.
+ */
+const __mainWorker = new worker();
+/**
+ * This method will be called when Electron has finished
+ * initialization and is ready to create browser windows.
+ * Some APIs can only be used after this event occurs.
+ */
+electron_1.app.on('ready', async () => {
+    _createMainWindow();
+    electron_1.app.on('activate', () => {
+        // On macOS it's common to re-create a window in the app when the
+        // dock icon is clicked and there are no other windows open.
+        if (electron_1.BrowserWindow.getAllWindows().length === 0)
+            _createMainWindow();
+    });
+});
+/**
+ * Quit when all windows are closed.
+ * On OS X it is common for applications and their menu bar
+ * to stay active until the user quits explicitly with Cmd + Q.
+ */
+electron_1.app.on('window-all-closed', () => {
+    // On macOS it is common for applications and their menu bar
+    // to stay active until the user quits explicitly with Cmd + Q
+    if (process.platform !== 'darwin')
+        electron_1.app.quit();
+});
+/**
+ * `_createMainWindow()` is responsible for the initial creation of the main window.
+ */
+function _createMainWindow() {
+    // Create the browser window.
+    __mainWindow = new electron_1.BrowserWindow({
+        width: 800,
+        height: 600,
+        autoHideMenuBar: true,
+        webPreferences: {
+            preload: path.join(electron_1.app.getAppPath(), 'preload.js')
+        }
+    });
+    // and load the index.html of the app.
+    __mainWindow.loadFile(path.join(electron_1.app.getAppPath().toString(), "index.html"));
+    // Open the DevTools.
+    // mainWindow.webContents.openDevTools()
+    // Emitted when the window is closed.
+    __mainWindow.on("closed", () => {
+        // Dereference the window object, usually you would store windows
+        // in an array if your app supports multi windows, this is the time
+        // when you should delete the corresponding element.
+        __mainWindow = null;
+    });
+}
+/**
  * `_log()` is responsible for sending log messages to the Chromium Console.
  * @param message  The message to be sent to the console.
  */
 function _log(message) {
-    mainWindow.webContents.send('console-log', message);
+    __mainWindow.webContents.send('console-log', message);
 }
 /**
  * `_error()` is responsible for sending error messages to the Chromium Console.
  * @param message  The message to be sent to the console.
  */
 function _error(message) {
-    mainWindow.webContents.send('console-error', message);
+    __mainWindow.webContents.send('console-error', message);
 }
 /**
  * `_updateTaskProgress` is responsible for updating
@@ -269,11 +266,11 @@ function _error(message) {
  * @param options The options to pass to the progress bar, the default is { mode: 'normal' }
  */
 function _updateTaskProgress(value, maxValue, options = { mode: 'normal' }) {
-    mainWindow.webContents.send('task-progress', value, maxValue);
+    __mainWindow.webContents.send('task-progress', value, maxValue);
     if ((value / maxValue) < 1)
-        mainWindow.setProgressBar(value / maxValue, options);
+        __mainWindow.setProgressBar(value / maxValue, options);
     else
-        mainWindow.setProgressBar(-1);
+        __mainWindow.setProgressBar(-1);
 }
 /**
  * `_appendMessageTaskLog` is responsible for sending
@@ -281,23 +278,23 @@ function _updateTaskProgress(value, maxValue, options = { mode: 'normal' }) {
  * @param message  The message to be sent to the task log.
  */
 function _appendMessageTaskLog(message) {
-    mainWindow.webContents.send('task-log-append-message', message);
+    __mainWindow.webContents.send('task-log-append-message', message);
 }
 ;
 /**
- * `findFilesInDir` is a function that recursively searches the files that match a filter in a directory
+ * `_findFilesInDir` is a function that recursively searches the files that match a filter in a directory
  * and runs a callback on each file.
  * @param startPath The top-most level to start the search in.
  * @param filter A regular expression filter to filter the search results.
  * @param callback A function to have run on each file.
  */
-function findFilesInDir(startPath, filter, callback) {
+function _findFilesInDir(startPath, filter, callback) {
     const files = fsx.readdirSync(startPath);
     for (let i = 0; i < files.length; i++) {
         const filename = path.join(startPath, files[i]);
         const stat = fsx.lstatSync(filename);
         if (stat.isDirectory()) {
-            findFilesInDir(filename, filter, callback);
+            _findFilesInDir(filename, filter, callback);
         }
         else if (filter.test(filename)) {
             callback(filename);
@@ -309,7 +306,7 @@ function findFilesInDir(startPath, filter, callback) {
  * @param _event  The inter-process communication sender of `__cancelOperation__`.
  */
 electron_1.ipcMain.on('__cancelOperation__', async (_event) => {
-    mainWorker.killAllShells().then(() => {
+    __mainWorker.killAllShells().then(() => {
         _appendMessageTaskLog("Beat Map Generation Canceled!");
     });
 });
@@ -324,7 +321,7 @@ electron_1.ipcMain.on('__selectDirectory__', (_event) => {
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
         properties: ['openDirectory', 'multiSelections']
     };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
+    electron_1.dialog.showOpenDialog(__mainWindow, options)
         .then((dirs) => {
         if (!dirs.canceled) {
             _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
@@ -347,7 +344,7 @@ electron_1.ipcMain.on('__selectFiles__', (_event) => {
             }],
         properties: ['openFile', 'multiSelections']
     };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
+    electron_1.dialog.showOpenDialog(__mainWindow, options)
         .then((dirs) => {
         if (!dirs.canceled) {
             _event.sender.send("selectFilesDirs-finished", dirs.filePaths);
@@ -367,7 +364,7 @@ electron_1.ipcMain.on('__selectOutDirectory__', (_event) => {
         defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
         properties: ['openDirectory']
     };
-    electron_1.dialog.showOpenDialog(mainWindow, options)
+    electron_1.dialog.showOpenDialog(__mainWindow, options)
         .then((dirs) => {
         if (!dirs.canceled) {
             _event.sender.send("selectOutDirectory-finished", dirs.filePaths[0]);
@@ -377,19 +374,19 @@ electron_1.ipcMain.on('__selectOutDirectory__', (_event) => {
     });
 });
 /**
- * `_generateBeatMap` is a function for starting the beat map generation.
+ * `_generateBeatMaps` is a function for starting the beat map generation.
  * @param opType A numerical value that indicates whether the 'dir' is an array of file paths or folder paths
  * @param dir  The path of the directory/file to generate the beat map from.
  * @param args  A map of arguments to use for generating the beat maps
  */
-function _generateBeatMap(opType, dir, args) {
+function _generateBeatMaps(opType, dir, args) {
     let totalCount = 0;
     let currentCount = 0;
     if (opType === 0) {
         // Folders
         let newDir = [];
         dir.forEach((folder) => {
-            findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file) => { newDir.push(file); });
+            _findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file) => { newDir.push(file); });
         });
         totalCount = newDir.length;
         dir = newDir;
@@ -401,20 +398,20 @@ function _generateBeatMap(opType, dir, args) {
     totalCount += 1;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
-    mainWorker.copyFiles().then(() => {
+    __mainWorker.initFiles().then(() => {
         currentCount += 1;
         _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
         _appendMessageTaskLog('Initialized Files!');
         let index = -1;
         function generate() {
-            while (mainWorker.shellsRunning < coreCount && index < (dir.length - 1)) {
-                mainWorker.shellsRunning += 1;
+            while (__mainWorker.shellsRunning < __coreCount && index < (dir.length - 1)) {
+                __mainWorker.shellsRunning += 1;
                 index += 1;
-                mainWorker.generateBeatMaps(dir[index], args).then(() => {
+                __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
                     _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
-                    if (index == (dir.length - 1) && mainWorker.shellsRunning == 0) {
+                    if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
                         return;
@@ -434,6 +431,6 @@ function _generateBeatMap(opType, dir, args) {
  * @param args  A map of arguments to use for generating the beat maps
  */
 electron_1.ipcMain.on('__generateBeatMap__', (_event, opType, dir, args) => {
-    _generateBeatMap(opType, dir, args);
+    _generateBeatMaps(opType, dir, args);
 });
 //# sourceMappingURL=app.js.map

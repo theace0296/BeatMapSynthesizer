@@ -4,9 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // It has the same sandbox as a Chrome extension.
 const electron_1 = require("electron");
 /**
- * beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
-class beatMapArgs {
+class __beatMapArgs {
     constructor() {
         this.dir = '';
         this.difficulty = 'all';
@@ -17,11 +17,8 @@ class beatMapArgs {
         this.zipFiles = 0;
     }
 }
-let args = new beatMapArgs();
+let args = new __beatMapArgs();
 let selectedDirs = [];
-args.difficulty = 'all';
-args.model = 'random';
-args.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
 let operationType = /** @class */ (() => {
     class operationType {
     }
