@@ -48,6 +48,8 @@ class Main:
         self.seed = 0
         for char in song_name:
             self.seed = int(f"{self.seed}{ord(char)}")
+        while (self.seed > 2**32 - 1):
+            self.seed = int(self.seed / (2**32 - 1))
         np.random.seed(self.seed)
         self.difficulty = difficulty
         self.model = model
