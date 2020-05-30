@@ -336,6 +336,78 @@ class Main:
             sys.stdout.write('Please specify model for mapping.\n')
             sys.stdout.flush()
 
+    def removeBadNotes(notes_list):
+        #Remove potential notes that come too early in the song:
+        for i, x in enumerate(notes_list):
+            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 2:
+                del notes_list[i]
+            elif notes_list[i]['_time'] > self.tracks['beat_times'][-1]:
+                del notes_list[i]
+            """
+            CutDirs
+            0 : Up
+            5 : Up-Right
+            3 : Right
+            7 : Down-Right
+            1 : Down
+            6 : Down-Left
+            4 : Left
+            8 : Up-Left
+            """
+            oppositeCutDirs = {0: [3,7,1,6,4], 
+                               5: [7,1,6,4,8], 
+                               3: [0,1,6,4,8], 
+                               7: [0,5,6,4,8], 
+                               1: [0,5,3,4,8], 
+                               6: [0,5,3,7,8], 
+                               4: [0,5,3,7,1], 
+                               8: [5,3,7,1,6]}
+
+            """
+            line_index
+            Column 1 = Left-most column
+            0 : Column 1
+            1 : Column 2
+            2 : Column 3
+            3 : Column 4
+            """
+            oppositeIndices = {0: [1,2],
+                          1: [0,2,3],
+                          2: [0,1,3],
+                          3: [1,2]}
+
+            """
+            line_layer
+            0 : Bottom
+            1 : Middle
+            2 : Top
+            """
+            oppositeLayers = {0: [1,2],
+                          1: [0,2],
+                          2: [0,1]}
+
+            if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
+                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
+            if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
+                if int(np.random.choice([0,1])):
+                    notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
+                else:
+                    notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+        return notes_list
+
+    def writeNotesHMM(notes_list, df_preds):
+        for index, row in df_preds.iterrows():
+            for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
+                if row[x] != '999':
+                    num = x[-1]
+                    note = {'_time': row['_time'],
+                            '_lineIndex': int(row[f"notes_lineIndex_{num}"]),
+                            '_lineLayer': int(row[f"notes_lineLayer_{num}"]),
+                            '_type': num,
+                            '_cutDirection': int(row[f"notes_cutDirection_{num}"])}
+                    notes_list.append(note)
+        return self.removeBadNotes(notes_list)
+
     #Random Mapping Note Writer
     def random_NotesWriter(self, difficulty):
         """This function randomly places blocks at approximately each beat or every other beat depending on the difficulty."""
@@ -343,7 +415,7 @@ class Main:
         line_index = [0, 1, 2, 3]
         line_layer = [0, 1, 2]
         types = [0, 1, 2, 3]
-        directions = list(range(0, 10))
+        directions = list(range(0, 8))
         #self.tracks['beat_times'] = [float(x) for x in self.tracks['beat_times']]
         self.tracks['beat_times'] = [ x * (self.tracks['bpm'] / 60) for x in self.tracks['beat_times'] ] #list(range(len(self.tracks['beat_times'])))
     
@@ -371,13 +443,8 @@ class Main:
                         '_type': int(np.random.choice(types)),
                         '_cutDirection': int(np.random.choice(directions))}
                 notes_list.append(note)
-        #Remove potential notes that come too early in the song:
-        for i, x in enumerate(notes_list):
-            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 1.5:
-                del notes_list[i]
-            elif notes_list[i]['_time'] > self.tracks['beat_times'][-1]:
-                del notes_list[i]
 
+        notes_list = self.removeBadNotes(notes_list)
         return notes_list
 
     #Hidden Markov Models Note Writing Functions
@@ -424,23 +491,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns = ['_time']), df_walk], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
-        notes_list = []
-        for index, row in df_preds.iterrows():
-            for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
-                if row[x] != '999':
-                    num = x[-1]
-                    note = {'_time': row['_time'],
-                            '_lineIndex': int(row[f"notes_lineIndex_{num}"]),
-                            '_lineLayer': int(row[f"notes_lineLayer_{num}"]),
-                            '_type': num,
-                            '_cutDirection': int(row[f"notes_cutDirection_{num}"])}
-                    notes_list.append(note)
-       #Remove potential notes that come too early in the song:
-        for i, x in enumerate(notes_list):
-            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 1.5:
-                del notes_list[i]
-            elif notes_list[i]['_time'] > beats[-1]:
-                del notes_list[i]
+        notes_list = self.writeNotesHMM(notes_list, df_preds)
 
         return notes_list
 
@@ -569,23 +620,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns = ['_time']), preds], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
-        notes_list = []
-        for index, row in df_preds.iterrows():
-            for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
-                if row[x] != '999':
-                    num = x[-1]
-                    note = {'_time': row['_time'],
-                            '_lineIndex': int(row[f"notes_lineIndex_{num}"]),
-                            '_lineLayer': int(row[f"notes_lineLayer_{num}"]),
-                            '_type': num,
-                            '_cutDirection': int(row[f"notes_cutDirection_{num}"])}
-                    notes_list.append(note)
-        #Remove potential notes that come too early in the song:
-        for i, x in enumerate(notes_list):
-            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 1.5:
-                del notes_list[i]
-            elif notes_list[i]['_time'] > beats[-1]:
-                del notes_list[i]
+        notes_list = self.writeNotesHMM(notes_list, df_preds)
     
         return notes_list
 
@@ -759,23 +794,8 @@ class Main:
         df_preds = pd.concat([merged_beats, preds], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
-        notes_list = []
-        for index, row in df_preds.iterrows():
-            for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
-                if row[x] != '999':
-                    num = x[-1]
-                    note = {'_time': row['_time'],
-                            '_lineIndex': int(row[f"notes_lineIndex_{num}"]),
-                            '_lineLayer': int(row[f"notes_lineLayer_{num}"]),
-                            '_type': num,
-                            '_cutDirection': int(row[f"notes_cutDirection_{num}"])}
-                    notes_list.append(note)
-        #Remove potential notes that come too early in the song:
-        for i, x in enumerate(notes_list):
-            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 1.5:
-                del notes_list[i]
-            elif notes_list[i]['_time'] > beat_times[-1]:
-                del notes_list[i]
+        notes_list = self.writeNotesHMM(notes_list, df_preds)
+
         return notes_list
 
 if __name__ == '__main__':
