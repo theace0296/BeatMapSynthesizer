@@ -491,6 +491,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns = ['_time']), df_walk], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
+        notes_list = []
         notes_list = self.writeNotesHMM(notes_list, df_preds)
 
         return notes_list
@@ -620,6 +621,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns = ['_time']), preds], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
+        notes_list = []
         notes_list = self.writeNotesHMM(notes_list, df_preds)
     
         return notes_list
@@ -794,6 +796,7 @@ class Main:
         df_preds = pd.concat([merged_beats, preds], axis = 1, sort = True)
         df_preds.dropna(axis = 0, inplace = True)
         #Write notes dictionaries
+        notes_list = []
         notes_list = self.writeNotesHMM(notes_list, df_preds)
 
         return notes_list
