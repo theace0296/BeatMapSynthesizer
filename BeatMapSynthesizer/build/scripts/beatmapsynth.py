@@ -336,7 +336,7 @@ class Main:
             sys.stdout.write('Please specify model for mapping.\n')
             sys.stdout.flush()
 
-    def removeBadNotes(notes_list):
+    def removeBadNotes(self, notes_list):
         #Remove potential notes that come too early in the song:
         for i, x in enumerate(notes_list):
             if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 2:
@@ -395,7 +395,7 @@ class Main:
                     notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
         return notes_list
 
-    def writeNotesHMM(notes_list, df_preds):
+    def writeNotesHMM(self, notes_list, df_preds):
         for index, row in df_preds.iterrows():
             for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
                 if row[x] != '999':
