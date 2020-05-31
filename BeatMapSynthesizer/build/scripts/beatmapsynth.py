@@ -351,17 +351,17 @@ class Main:
             7 : Down-Right
             1 : Down
             6 : Down-Left
-            4 : Left
-            8 : Up-Left
+            2 : Left
+            4 : Up-Left
             """
-            oppositeCutDirs = {0: [3,7,1,6,4], 
-                               5: [7,1,6,4,8], 
-                               3: [0,1,6,4,8], 
-                               7: [0,5,6,4,8], 
-                               1: [0,5,3,4,8], 
-                               6: [0,5,3,7,8], 
-                               4: [0,5,3,7,1], 
-                               8: [5,3,7,1,6]}
+            oppositeCutDirs = {0: [3,7,1,6,2], 
+                               5: [7,1,6,2,4], 
+                               3: [0,1,6,2,4], 
+                               7: [0,5,6,2,4], 
+                               1: [0,5,3,2,4], 
+                               6: [0,5,3,7,4], 
+                               2: [0,5,3,7,1], 
+                               4: [5,3,7,1,6]}
 
             """
             line_index
@@ -386,13 +386,14 @@ class Main:
                           1: [0,2],
                           2: [0,1]}
             if i > 1:
-                if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
-                    notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
-                if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
-                    if int(np.random.choice([0,1])):
-                        notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
-                    else:
-                        notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+                if notes_list[i]['_cutDirection'] != 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 1 and notes_list[i]['_type'] == notes_list[i-1]['_type']:
+                    if notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
+                        notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
+                    if notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
+                        if int(np.random.choice([0,1])):
+                            notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
+                        else:
+                            notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
         return notes_list
 
     def writeNotesHMM(self, notes_list, df_preds):
