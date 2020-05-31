@@ -385,14 +385,14 @@ class Main:
             oppositeLayers = {0: [1,2],
                           1: [0,2],
                           2: [0,1]}
-
-            if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
-                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
-            if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
-                if int(np.random.choice([0,1])):
-                    notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
-                else:
-                    notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+            if i > 1:
+                if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
+                    notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
+                if notes_list[i]['_cutDirection'] == 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 0.5 and notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
+                    if int(np.random.choice([0,1])):
+                        notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
+                    else:
+                        notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
         return notes_list
 
     def writeNotesHMM(self, notes_list, df_preds):
