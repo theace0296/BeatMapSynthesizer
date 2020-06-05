@@ -40,11 +40,12 @@ outDir = the directory to put the output zip file in
 ***
 """
 class Main:
-    def __init__(self, song_path, song_name, difficulty, model, k, version, outDir, zipFiles):
+    def __init__(self, song_path, song_name, difficulty, model, k, version, environment, outDir, zipFiles):
         self.song_path = song_path
         if song_name is None:
-            song_name = self.getSongNameFromMetadata()
-        self.song_name = song_name
+            self.song_name = self.getSongNameFromMetadata()
+        else:
+            self.song_name = song_name
         self.seed = 0
         for char in song_name:
             self.seed = int(f"{self.seed}{ord(char)}")
@@ -54,11 +55,17 @@ class Main:
         self.difficulty = difficulty
         self.model = model
         if k is None:
-            k = 5
-        self.k = k
+            self.k = 5
+        else:
+            self.k = k
         if version is None:
-            version = 2
-        self.version = version
+            self.version = 2
+        else:
+            self.version = version
+        if environment is None:
+            self.environment = 'DefaultEnvironment'
+        else:
+            self.environment = environment
         self.outDir = outDir
         self.zipFiles = zipFiles
         self.workingDir = f"{self.outDir}/{self.song_name}"
@@ -180,7 +187,7 @@ class Main:
             '_previewDuration': 30,
             '_songFilename': 'song.egg',
             '_coverImageFilename': 'cover.jpg',
-            '_environmentName': 'DefaultEnvironment',
+            '_environmentName': self.environment,
             '_customData': {},
              '_difficultyBeatmapSets': [{'_beatmapCharacteristicName': 'Standard',
                                          '_difficultyBeatmaps': difficulty_beatmaps_array}]}
@@ -385,15 +392,17 @@ class Main:
             oppositeLayers = {0: [1,2],
                           1: [0,2],
                           2: [0,1]}
-            if i > 1:
-                if notes_list[i]['_cutDirection'] != 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 1 and notes_list[i]['_type'] == notes_list[i-1]['_type']:
-                    if notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
-                        notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
-                    if notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
-                        if int(np.random.choice([0,1])):
-                            notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
-                        else:
-                            notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+
+            #if i > 1:
+            #    if notes_list[i]['_cutDirection'] != 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 1 and notes_list[i]['_type'] == notes_list[i-1]['_type']:
+            #        if notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
+            #            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
+            #        if notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
+            #            if int(np.random.choice([0,1])):
+            #                notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
+            #            else:
+            #                notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+
         return notes_list
 
     def writeNotesHMM(self, notes_list, df_preds):
@@ -607,10 +616,10 @@ class Main:
     def segmentedHMM_NotesWriter(self, difficulty):
         """This function writes the list of notes based on the segmented HMM model."""
         #Load model:
-        if version == 1:
+        if self.version == 1:
             with open(f"./models/HMM_{difficulty}.pkl", 'rb') as m:
                 MC = pickle.load(m)
-        elif version == 2:
+        elif self.version == 2:
             with open(f"./models/HMM_{difficulty}_v2.pkl", 'rb') as m:
                 MC = pickle.load(m)
             
@@ -810,6 +819,7 @@ if __name__ == '__main__':
     parser.add_argument('model', type=str, help="Desired model for mapping: 'random', 'HMM', 'segmented_HMM', 'rate_modulated_segmented_HMM'")
     parser.add_argument('-k', type=int, help="Number of expected segments for segmented model. Default 5", default=5, required=False)
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
+    parser.add_argument('--environment', type=str, help="Environment to use in Beat Saber", required=False)
     parser.add_argument('--workingDir', type=str, help="Directory of scripts folder (this is automatically done, do not use this argument!)", required=True)
     parser.add_argument('--outDir', type=str, help="Directory to save outputed files to. Default is the current directory.", required=False)
     parser.add_argument('--zipFiles', type=int, help="Boolean to zip output files.", default=0, required=False)
@@ -826,10 +836,11 @@ if __name__ == '__main__':
     testFile.write(f"Model: {args.model}\n")
     testFile.write(f"K: {args.k}\n")
     testFile.write(f"Version: {args.version}\n")
+    testFile.write(f"Environment: {args.environment}\n")
     testFile.write(f"Out Directory: {args.outDir}\n")
     testFile.write(f"Zip Files: {args.zipFiles}\n")
     testFile.close()
     
-    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.outDir, args.zipFiles)
+    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.environment, args.outDir, args.zipFiles)
     main.generateBeatMap()
     

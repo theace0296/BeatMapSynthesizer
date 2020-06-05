@@ -12,6 +12,7 @@ class __beatMapArgs {
     version: number;
     outDir: string;
     zipFiles: number;
+    environment: string;
 
     constructor() {
         this.dir = '';
@@ -21,6 +22,7 @@ class __beatMapArgs {
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
+        this.environment = 'DefaultEnvironment';
     }
 }
 
@@ -73,6 +75,10 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('numSegments').classList.remove('hidden');
         else
             document.getElementById('numSegments').classList.add('hidden');
+    });
+
+    document.getElementById('environmentlist').addEventListener('change', () => {
+        args.environment = (document.getElementById('environmentlist') as HTMLSelectElement).value.toString();
     });
 
     document.getElementById('generateBeatMapButton').addEventListener('click', () => {

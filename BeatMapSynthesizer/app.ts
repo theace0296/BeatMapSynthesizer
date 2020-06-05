@@ -6,7 +6,33 @@ import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
 import { EOL as newline, cpus, totalmem } from 'os';
+import { isNullOrUndefined } from 'util';
 const sanitize = require('sanitize-filename');
+
+/**
+ * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
+ */
+class __beatMapArgs {
+    dir: string;
+    difficulty: string;
+    model: string;
+    k: number;
+    version: number;
+    outDir: string;
+    zipFiles: number;
+    environment: string;
+
+    constructor() {
+        this.dir = '';
+        this.difficulty = 'all';
+        this.model = 'random';
+        this.k = 5;
+        this.version = 2;
+        this.outDir = isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR;
+        this.zipFiles = 0;
+        this.environment = 'DefaultEnvironment';
+    }
+}
 
 /**
  * `__coreCount` is the 'usable' cores for running multiple beat map generations at once.
@@ -97,6 +123,7 @@ class worker {
             `"${args.model}"`,
             '-k', args.k.toString(),
             '--version', args.version.toString(),
+            '--environment', `"${args.environment}"`,
             '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
             '--zipFiles', args.zipFiles.toString()
@@ -203,29 +230,6 @@ class worker {
 }
 
 /**
- * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
- */
-class __beatMapArgs {
-    dir: string;
-    difficulty: string;
-    model: string;
-    k: number;
-    version: number;
-    outDir: string;
-    zipFiles: number;
-
-    constructor() {
-        this.dir = '';
-        this.difficulty = 'all';
-        this.model = 'random';
-        this.k = 5;
-        this.version = 2;
-        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
-        this.zipFiles = 0;
-    }
-}
-
-/**
  * `__mainWindow` is the render process window the user interacts with.
  */
 let __mainWindow: Electron.BrowserWindow;
@@ -248,6 +252,7 @@ app.on('ready', async () => {
         if (BrowserWindow.getAllWindows().length === 0)
             _createMainWindow();
     });
+    __mainWorker.initFiles();
 })
 
 /**
@@ -277,7 +282,7 @@ function _createMainWindow() {
     });
 
     // and load the index.html of the app.
-    __mainWindow.loadFile(path.join(app.getAppPath().toString(), "index.html"));
+    __mainWindow.loadFile(path.join(app.getAppPath(), "index.html"));
 
     // Open the DevTools.
     // mainWindow.webContents.openDevTools()
@@ -370,7 +375,7 @@ ipcMain.on('__cancelOperation__', async (_event) => {
 ipcMain.on('__selectDirectory__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        defaultPath: isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR,
         properties: ['openDirectory', 'multiSelections']
     };
 
@@ -392,7 +397,7 @@ ipcMain.on('__selectDirectory__', (_event) => {
 ipcMain.on('__selectFiles__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select an audio file',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        defaultPath: isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR,
         filters: [{
             name: 'Audio files', extensions: [ 'mp3', 'wav', 'flv', 'raw', 'ogg', 'egg' ] }],
         properties: ['openFile', 'multiSelections']
@@ -416,7 +421,7 @@ ipcMain.on('__selectFiles__', (_event) => {
 ipcMain.on('__selectOutDirectory__', (_event) => {
     const options: Electron.OpenDialogOptions = {
         title: 'Select a folder',
-        defaultPath: process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH,
+        defaultPath: isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR,
         properties: ['openDirectory']
     };
 
