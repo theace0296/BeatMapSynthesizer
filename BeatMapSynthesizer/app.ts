@@ -261,6 +261,11 @@ class worker {
 
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
 
+                setTimeout(() => {
+                    shell.kill('SIGTERM');
+                    process.kill(-shell.pid);
+                }, 150000)
+
             }
             else {
                 --this.shellsRunning;
@@ -276,7 +281,8 @@ class worker {
         return new Promise(resolve => {
             let shellsKilledSuccessfully: number = 0;
             for (let shell of this.activeShells) {
-                shell.kill();
+                shell.kill('SIGTERM');
+                process.kill(-shell.pid);
                 if (shell.killed) {
                     shellsKilledSuccessfully++;
                 }
@@ -327,6 +333,7 @@ app.on('ready', async () => {
 app.on('window-all-closed', () => {
     // On macOS it is common for applications and their menu bar
     // to stay active until the user quits explicitly with Cmd + Q
+    __mainWorker.killAllShells();
     if (process.platform !== 'darwin')
         app.quit();
 })
