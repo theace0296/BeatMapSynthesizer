@@ -185,7 +185,7 @@ class worker {
             '-k', args.k.toString(),
             '--version', args.version.toString(),
             '--environment', `"${args.environment}"`,
-            '--albumDir', `"${albumDir}"`,
+            '--albumDir', `"${albumDir.normalize().replace(/\\/gi, "/")}"`,
             '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
             '--zipFiles', args.zipFiles.toString()
