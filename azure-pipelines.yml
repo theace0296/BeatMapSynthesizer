@@ -24,13 +24,12 @@ steps:
   persistCredentials: true
 - checkout: BeatMapSynthesizerModels
 
-- script: dir $(Build.SourcesDirectory)
-
 - task: CopyFiles@2
   inputs:
     SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizerModels/models'
     Contents: '**'
     TargetFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/models'
+  displayName: 'Copy model files to source dir'
 
 - task: NodeTool@0
   inputs:
@@ -92,4 +91,4 @@ steps:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
     ArtifactName: 'beat-map-synthesizer-win-$(version)'
     publishLocation: 'Container'
-  displayName: 'Publish to Build Artifact'
+  displayName: 'Publish to build artifact'
