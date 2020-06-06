@@ -14,6 +14,19 @@ pool:
   vmImage: 'windows-latest'
 
 steps:
+- checkout: self
+  path: $(Build.SourcesDirectory)/BeatMapSynthesizer
+- checkout: BeatMapSynthesizer
+  path: $(Build.SourcesDirectory)/BeatMapSynthesizerModels
+
+- script: dir $(Build.SourcesDirectory)
+
+- task: CopyFiles@2
+  inputs:
+    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizerModels/models'
+    Contents: '**'
+    TargetFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/models'
+
 - task: NodeTool@0
   inputs:
     versionSpec: '10.x'
