@@ -13,9 +13,16 @@ trigger:
 pool:
   vmImage: 'windows-latest'
 
+resources:
+  repositories:
+    - repository: BeatMapSynthesizerModels
+      type: git
+      name: BeatMapSynthesizer/BeatMapSynthesizerModels
+
 steps:
 - checkout: self
   path: $(Build.SourcesDirectory)/BeatMapSynthesizer
+  persistCredentials: true
 - checkout: BeatMapSynthesizerModels
   path: $(Build.SourcesDirectory)/BeatMapSynthesizerModels
 
