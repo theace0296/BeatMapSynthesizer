@@ -54,7 +54,7 @@ steps:
       python -m pip install wheel
       python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/build/scripts/requirements.txt
       python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
-      python -m pip install https://github.com/librosa/librosa/zipball/master
+      python -m pip install https://github.com/librosa/librosa/zipball/main
       $pyPath = python -c "import sys; print(sys.executable)"
       $pyPath = Split-Path -Path $pyPath
       $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
