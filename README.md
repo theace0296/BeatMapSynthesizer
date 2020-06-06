@@ -1,3 +1,7 @@
+[![Build Status](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_apis/build/status/theace0296.BeatMapSynthesizer?branchName=gui)](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_build/latest?definitionId=1&branchName=gui)
+
+---
+
 ![alt text](https://github.com/wvsharber/BeatMapSynthesizer/blob/master/beatMapSynth_Banner.jpg "Image credit: fellow Beat Saber enthusiast, Jacob Joyce")
 
 # BeatMapSynth
