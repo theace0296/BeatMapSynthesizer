@@ -21,10 +21,8 @@ resources:
 
 steps:
 - checkout: self
-  path: $(Build.SourcesDirectory)/BeatMapSynthesizer
   persistCredentials: true
 - checkout: BeatMapSynthesizerModels
-  path: $(Build.SourcesDirectory)/BeatMapSynthesizerModels
 
 - script: dir $(Build.SourcesDirectory)
 
