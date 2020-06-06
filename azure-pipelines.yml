@@ -16,7 +16,7 @@ pool:
 steps:
 - checkout: self
   path: $(Build.SourcesDirectory)/BeatMapSynthesizer
-- checkout: BeatMapSynthesizer
+- checkout: BeatMapSynthesizerModels
   path: $(Build.SourcesDirectory)/BeatMapSynthesizerModels
 
 - script: dir $(Build.SourcesDirectory)
