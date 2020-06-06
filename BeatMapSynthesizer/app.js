@@ -245,7 +245,6 @@ class worker {
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
                 setTimeout(() => {
                     shell.kill('SIGTERM');
-                    process.kill(-shell.pid);
                 }, 150000);
             }
             else {
@@ -262,11 +261,20 @@ class worker {
             let shellsKilledSuccessfully = 0;
             for (let shell of this.activeShells) {
                 shell.kill('SIGTERM');
-                process.kill(-shell.pid);
+                // Kills a PID and all child process
+                child_process_1.exec(`taskkill /pid ${shell.pid} /t`, (err, stdout) => {
+                    console.log('stdout', stdout);
+                    console.log('stderr', err);
+                });
                 if (shell.killed) {
                     shellsKilledSuccessfully++;
                 }
             }
+            // Kills a process based on filename of the exe and all child processes
+            child_process_1.exec(`taskkill /im beatmapsynth.exe /t`, (err, stdout) => {
+                console.log('stdout', stdout);
+                console.log('stderr', err);
+            });
             if (shellsKilledSuccessfully === this.activeShells.length) {
                 this.activeShells.length = 0;
                 resolve(true);

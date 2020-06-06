@@ -1,7 +1,7 @@
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain, dialog, ProgressBarOptions } from 'electron';
 import * as path from "path";
-import { execFile, ChildProcess } from 'child_process';
+import { execFile, exec, ChildProcess } from 'child_process';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
@@ -263,7 +263,6 @@ class worker {
 
                 setTimeout(() => {
                     shell.kill('SIGTERM');
-                    process.kill(-shell.pid);
                 }, 150000)
 
             }
@@ -282,11 +281,23 @@ class worker {
             let shellsKilledSuccessfully: number = 0;
             for (let shell of this.activeShells) {
                 shell.kill('SIGTERM');
-                process.kill(-shell.pid);
+
+                // Kills a PID and all child process
+                exec(`taskkill /pid ${shell.pid} /t`, (err, stdout) => {
+                    console.log('stdout', stdout)
+                    console.log('stderr', err)
+                });
+
                 if (shell.killed) {
                     shellsKilledSuccessfully++;
                 }
             }
+
+            // Kills a process based on filename of the exe and all child processes
+            exec(`taskkill /im beatmapsynth.exe /t`, (err, stdout) => {
+                console.log('stdout', stdout)
+                console.log('stderr', err)
+            });
 
             if (shellsKilledSuccessfully === this.activeShells.length) {
                 this.activeShells.length = 0;
