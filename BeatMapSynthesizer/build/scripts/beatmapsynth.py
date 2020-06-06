@@ -20,27 +20,9 @@ import shutil
 import warnings
 warnings.filterwarnings('ignore', "PySoundFile failed. Trying audioread instead.")
 
-"""
-Class to load a music file and generate a custom Beat Saber map based on the specified model and difficulty. Outputs a zipped folder of necessary files to play the custom map in the Beat Saber game.
-    
-***
-song_path = string file path to music file location
-    
-song_name = string to name level as it will appear in the game
-    
-difficulty = desired difficulty level, can be: 'easy', 'normal', 'hard', 'expert', 'expertplus', or 'all'
-    
-model = desired model to use for map generation, can be: 'random', 'HMM', 'segmented_HMM', or 'rate_modulated_segmented_HMM'
-    
-k = number of song segments if using a segmented model. Default is 5, may want to increase or decrease based on song complexity
-   
-version = for HMM models, can choose either 1 or 2. 1 was trained on a smaller, but potentially higher quality dataset (custom maps with over 90% rating on beatsaver.com), while 2 was trained on a larger dataset of custom maps with over 70% rating, so it may have a larger pool of "potential moves."
-    
-outDir = the directory to put the output zip file in
-***
-"""
+
 class Main:
-    def __init__(self, song_path, song_name, difficulty, model, k, version, environment, outDir, zipFiles):
+    def __init__(self, song_path, song_name, difficulty, model, k, version, environment, albumDir, outDir, zipFiles):
         self.song_path = song_path
         if song_name is None:
             self.song_name = self.getSongNameFromMetadata()
@@ -66,6 +48,12 @@ class Main:
             self.environment = 'DefaultEnvironment'
         else:
             self.environment = environment
+
+        if albumDir is None or albumDir == 'NONE':
+            self.albumDir = 'cover.jpg'
+        else:
+            self.albumDir = albumDir
+
         self.outDir = outDir
         self.zipFiles = zipFiles
         self.workingDir = f"{self.outDir}/{self.song_name}"
@@ -107,6 +95,10 @@ class Main:
                         'modulated_beat_list': []
                     }
                 }
+
+    def __print(self, message):
+        sys.stdout.write(f"{message}\n")
+        sys.stdout.flush()
 
     def getSongNameFromMetadata(self):
         song_name = 'default'
@@ -235,8 +227,7 @@ class Main:
         elif self.song_path.endswith('.ogg') or self.song_path.endswith('.egg'):
             shutil.copyfile(self.song_path, f"{self.workingDir}/song.egg")
         else:
-            sys.stdout.write("Unsupported song file type. Choose a file of type .mp3, .wav, .flv, .raw, or .ogg.\n")
-            sys.stdout.flush()
+            self.__print("Unsupported song file type. Choose a file of type .mp3, .wav, .flv, .raw, or .ogg.")
 
     def eventsWriter(self, difficulty):
         """Placeholder function for writing a list of events to be incorporated into a beatmap file. May have future support."""
@@ -260,7 +251,8 @@ class Main:
 
     def zipWriter(self):
         "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
-        shutil.copy('cover.jpg', f"{self.workingDir}")
+        shutil.copyfile(self.albumDir, f"{self.workingDir}/cover.jpg")
+
         if self.zipFiles:
             files = [ f"{self.workingDir}/info.dat", f"{self.workingDir}/cover.jpg", f"{self.workingDir}/song.egg" ]
             if self.difficulty.casefold() == 'ALL'.casefold():
@@ -288,14 +280,12 @@ class Main:
     #Mapping Function
     def generateBeatMap(self):
         #Load song and get beat features
-        sys.stdout.write(f"{self.song_name} | Loading Song...\n")
-        sys.stdout.flush()
+        self.__print(f"{self.song_name}")
+        self.__print(f"\t{self.song_name} | Loading Song...")
         self.tracks['bpm'], self.tracks['beat_times'], self.tracks['y'], self.tracks['sr'] = self.getBeatFeatures()
-        sys.stdout.write(f"{self.song_name} | Song loaded successfully!\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Song loaded successfully!")
         #Write lists for note placement, event placement, and obstacle placement
-        sys.stdout.write(f"{self.song_name} | Mapping...\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Mapping...")
         if self.difficulty.casefold() == 'ALL'.casefold():
             for diff in [ 'easy', 'normal', 'hard', 'expert', 'expertplus' ]:
                 self.tracks[diff.casefold()]['notes_list'] = self.runModel(diff.casefold()) #fixes _time != beat time
@@ -305,28 +295,23 @@ class Main:
             self.tracks[self.difficulty.casefold()]['notes_list'] = self.runModel(self.difficulty.casefold()) #fixes _time != beat time
             self.tracks[self.difficulty.casefold()]['events_list'] = self.eventsWriter(self.difficulty.casefold())
             self.tracks[self.difficulty.casefold()]['obstacles_list'] = self.obstaclesWriter(self.difficulty.casefold())
-        sys.stdout.write(f"{self.song_name} | Mapping done!\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Mapping done!")
         #Write and zip files
-        sys.stdout.write(f"{self.song_name} | Writing files to disk...\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Writing files to disk...")
         self.writeInfoFile()
         self.writeLevelFile()
-        sys.stdout.write(f"{self.song_name} | Converting music file...\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Converting music file...")
         self.convertMusicFile()
-        sys.stdout.write(f"{self.song_name} | Zipping folder...\n")
-        sys.stdout.flush()
+        self.__print(f"\t{self.song_name} | Zipping folder...")
         self.zipWriter()
         if (self.zipFiles):
-            sys.stdout.write(f"{self.song_name} | Finished! Look for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory\n")
-            sys.stdout.flush()
+            self.__print(f"{self.song_name} | Finished! \n\tLook for zipped folder in {self.outDir}, unzip the folder, and place in the 'CustomMusic' folder in the Beat Saber directory")
         else:
-            sys.stdout.write(f"{self.song_name} | Finished! Look for folder in {self.outDir}, and place in the 'CustomMusic' folder in the Beat Saber directory\n")
-            sys.stdout.flush()
+            self.__print(f"{self.song_name} | Finished! \n\tLook for folder in {self.outDir}, and place in the 'CustomMusic' folder in the Beat Saber directory")
     
     #Refractored model runner to allow for only a single mapping function
     def runModel(self, difficulty):
+        self.__print(f"\t{self.song_name} | Modeling using {self.model} model...")
         if self.model == 'random':
             """Function to output the automatically created completely random map (i.e. baseline model) for a provided song. Returns a zipped folder that can be unzipped and placed in the 'CustomMusic' folder in the Beat Saber game directory and played. CAUTION: This is completely random and is likely not enjoyable if even playable!"""
             return self.random_NotesWriter(difficulty)
@@ -340,8 +325,7 @@ class Main:
             """This function generates the files for a custom map using a rate modulated segmented HMM model."""
             return self.rateModulatedSegmentedHMM_NotesWriter(difficulty)
         else:
-            sys.stdout.write('Please specify model for mapping.\n')
-            sys.stdout.flush()
+            self.__print('Please specify model for mapping.')
 
     def removeBadNotes(self, notes_list):
         #Remove potential notes that come too early in the song:
@@ -820,6 +804,7 @@ if __name__ == '__main__':
     parser.add_argument('-k', type=int, help="Number of expected segments for segmented model. Default 5", default=5, required=False)
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
     parser.add_argument('--environment', type=str, help="Environment to use in Beat Saber", required=False)
+    parser.add_argument('--albumDir', type=str, help="Path to album cover art to use", required=False)
     parser.add_argument('--workingDir', type=str, help="Directory of scripts folder (this is automatically done, do not use this argument!)", required=True)
     parser.add_argument('--outDir', type=str, help="Directory to save outputed files to. Default is the current directory.", required=False)
     parser.add_argument('--zipFiles', type=int, help="Boolean to zip output files.", default=0, required=False)
@@ -837,10 +822,11 @@ if __name__ == '__main__':
     testFile.write(f"K: {args.k}\n")
     testFile.write(f"Version: {args.version}\n")
     testFile.write(f"Environment: {args.environment}\n")
+    testFile.write(f"Album Directory: {args.albumDir}\n")
     testFile.write(f"Out Directory: {args.outDir}\n")
     testFile.write(f"Zip Files: {args.zipFiles}\n")
     testFile.close()
     
-    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.environment, args.outDir, args.zipFiles)
+    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.environment, args.albumDir, args.outDir, args.zipFiles)
     main.generateBeatMap()
     

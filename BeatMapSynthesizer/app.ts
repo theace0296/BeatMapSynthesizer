@@ -1,13 +1,14 @@
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain, dialog, ProgressBarOptions } from 'electron';
 import * as path from "path";
-import { spawn, ChildProcess } from 'child_process';
+import { execFile, ChildProcess } from 'child_process';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
 import { EOL as newline, cpus, totalmem } from 'os';
 import { isNullOrUndefined } from 'util';
-const sanitize = require('sanitize-filename');
+import sanitize from 'sanitize-filename';
+import jimp from 'jimp';
 
 /**
  * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
@@ -43,7 +44,7 @@ class __beatMapArgs {
  */
 const __coreCount: number = (() => {
     let workingCores: number = cpus().length > 2 ? cpus().length - 2 : 1;
-    if(totalmem() >= (workingCores * 1073741824)) {
+    if (totalmem() >= (workingCores * 1073741824)) {
         return workingCores;
     }
     else if ((totalmem() / 1073741824) <= workingCores) {
@@ -115,6 +116,66 @@ class worker {
         let metadata: mm.IAudioMetadata = await mm.parseFile(dir);
         let trackname: string = sanitize(metadata.common.title);
         let artistname: string = sanitize(metadata.common.artist);
+        let embeddedart: mm.IPicture;
+
+        for (let i = 0; i < metadata.common.picture.length; i++) {
+            let currentType = metadata.common.picture[i].type.toLowerCase();
+            if (currentType == 'cover (front)' || currentType == 'cover art (front)' ||
+                currentType == 'pic' || currentType == 'apic' || currentType == 'covr' ||
+                currentType == 'metadata_block_picture' || currentType == 'wm/picture' ||
+                currentType == 'picture') {
+                embeddedart = metadata.common.picture[i];
+                _log('Embedded art found!');
+                break;
+            }
+        }
+
+        let albumDir: string = "NONE";
+        fsx.mkdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
+
+        if (embeddedart.data.length > 0) {
+            _log('Embedded art processing!');
+            let convertedImage: any;
+            let newBuffer: Buffer;
+            const imgDir = path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`, 'cover.jpg');
+            switch (embeddedart.format.toLowerCase()) {
+                case 'image/bmp':
+                    convertedImage = await jimp.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/gif':
+                    convertedImage = await jimp.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/jpeg':
+                    _log('Embedded art writing!');
+                    fsx.writeFileSync(imgDir, embeddedart.data);
+                    albumDir = imgDir;
+                    break;
+                case 'image/png':
+                    convertedImage = await jimp.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/tiff':
+                    convertedImage = await jimp.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+            }
+        }
+
+        if (args.environment == 'RANDOM') {
+            let environments = ["DefaultEnvironment", "BigMirrorEnvironment", "Origins", "NiceEnvironment", "TriangleEnvironment", "KDAEnvironment", "DragonsEnvironment",
+                "MonstercatEnvironment", "CrabRaveEnvironment", "PanicEnvironment", "RocketEnvironment", "GreenDayEnvironment", "GreenDayGrenadeEnvironment", "GlassDesertEnvironment"];
+            args.environment = environments[Math.floor(Math.random() * environments.length)];
+        }
 
         let temp_args: string[] = [
             `"${dir.normalize().replace(/\\/gi, "/")}"`,
@@ -124,6 +185,7 @@ class worker {
             '-k', args.k.toString(),
             '--version', args.version.toString(),
             '--environment', `"${args.environment}"`,
+            '--albumDir', `"${albumDir}"`,
             '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
             '--zipFiles', args.zipFiles.toString()
@@ -180,11 +242,14 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 };
 
-                const shell = spawn(this.pythonExePath, temp_args, { windowsVerbatimArguments: true });
+                const shell = execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 120000 });
                 this.activeShells.push(shell);
 
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
+                    if (albumDir != 'NONE')
+                        fsx.unlinkSync(albumDir);
+                    fsx.rmdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
                     --this.shellsRunning;
                     resolve(true);
                 });
@@ -196,13 +261,12 @@ class worker {
 
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
 
-                setTimeout(() => {
-                    shell.kill();
-                }, 120000);
-
             }
             else {
                 --this.shellsRunning;
+                if (albumDir != 'NONE')
+                    fsx.unlinkSync(albumDir);
+                fsx.rmdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
                 resolve(true);
             }
         });
@@ -399,7 +463,8 @@ ipcMain.on('__selectFiles__', (_event) => {
         title: 'Select an audio file',
         defaultPath: isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR,
         filters: [{
-            name: 'Audio files', extensions: [ 'mp3', 'wav', 'flv', 'raw', 'ogg', 'egg' ] }],
+            name: 'Audio files', extensions: ['mp3', 'wav', 'flv', 'raw', 'ogg', 'egg']
+        }],
         properties: ['openFile', 'multiSelections']
     };
 
@@ -448,7 +513,7 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
     if (opType === 0) {
         // Folders
         let newDir: string[] = [];
-        
+
         dir.forEach((folder: string) => {
             _findFilesInDir(folder, /mp3|wav|flv|raw|ogg|egg/, (file: string) => { newDir.push(file); });
         });
@@ -460,13 +525,10 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
         totalCount = dir.length;
     }
 
-    totalCount += 1;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
 
     __mainWorker.initFiles().then(() => {
-        currentCount += 1;
-        _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
         _appendMessageTaskLog('Initialized Files!');
 
         let index = -1;
@@ -477,7 +539,6 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
                 __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
-                    _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
                     if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
@@ -488,7 +549,7 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
             }
         }
         generate();
-        
+
     });
 }
 

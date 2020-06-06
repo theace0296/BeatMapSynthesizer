@@ -1,15 +1,38 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 // Modules to control application life and create native browser window
 const electron_1 = require("electron");
-const path = require("path");
+const path = __importStar(require("path"));
 const child_process_1 = require("child_process");
-const mm = require("music-metadata");
-const fsx = require("fs-extra");
-const compareVersions = require("compare-versions");
+const mm = __importStar(require("music-metadata"));
+const fsx = __importStar(require("fs-extra"));
+const compareVersions = __importStar(require("compare-versions"));
 const os_1 = require("os");
 const util_1 = require("util");
-const sanitize = require('sanitize-filename');
+const sanitize_filename_1 = __importDefault(require("sanitize-filename"));
+const jimp_1 = __importDefault(require("jimp"));
 /**
  * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
@@ -90,8 +113,64 @@ class worker {
     async generateBeatMaps(dir, args) {
         _log('generateBeatMaps - Start');
         let metadata = await mm.parseFile(dir);
-        let trackname = sanitize(metadata.common.title);
-        let artistname = sanitize(metadata.common.artist);
+        let trackname = sanitize_filename_1.default(metadata.common.title);
+        let artistname = sanitize_filename_1.default(metadata.common.artist);
+        let embeddedart;
+        for (let i = 0; i < metadata.common.picture.length; i++) {
+            let currentType = metadata.common.picture[i].type.toLowerCase();
+            if (currentType == 'cover (front)' || currentType == 'cover art (front)' ||
+                currentType == 'pic' || currentType == 'apic' || currentType == 'covr' ||
+                currentType == 'metadata_block_picture' || currentType == 'wm/picture' ||
+                currentType == 'picture') {
+                embeddedart = metadata.common.picture[i];
+                _log('Embedded art found!');
+                break;
+            }
+        }
+        let albumDir = "NONE";
+        fsx.mkdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
+        if (embeddedart.data.length > 0) {
+            _log('Embedded art processing!');
+            let convertedImage;
+            let newBuffer;
+            const imgDir = path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`, 'cover.jpg');
+            switch (embeddedart.format.toLowerCase()) {
+                case 'image/bmp':
+                    convertedImage = await jimp_1.default.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/gif':
+                    convertedImage = await jimp_1.default.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/jpeg':
+                    _log('Embedded art writing!');
+                    fsx.writeFileSync(imgDir, embeddedart.data);
+                    albumDir = imgDir;
+                    break;
+                case 'image/png':
+                    convertedImage = await jimp_1.default.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+                case 'image/tiff':
+                    convertedImage = await jimp_1.default.read(embeddedart.data);
+                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                    fsx.writeFileSync(imgDir, newBuffer);
+                    albumDir = imgDir;
+                    break;
+            }
+        }
+        if (args.environment == 'RANDOM') {
+            let environments = ["DefaultEnvironment", "BigMirrorEnvironment", "Origins", "NiceEnvironment", "TriangleEnvironment", "KDAEnvironment", "DragonsEnvironment",
+                "MonstercatEnvironment", "CrabRaveEnvironment", "PanicEnvironment", "RocketEnvironment", "GreenDayEnvironment", "GreenDayGrenadeEnvironment", "GlassDesertEnvironment"];
+            args.environment = environments[Math.floor(Math.random() * environments.length)];
+        }
         let temp_args = [
             `"${dir.normalize().replace(/\\/gi, "/")}"`,
             `"${trackname} - ${artistname}"`,
@@ -100,6 +179,7 @@ class worker {
             '-k', args.k.toString(),
             '--version', args.version.toString(),
             '--environment', `"${args.environment}"`,
+            '--albumDir', `"${albumDir}"`,
             '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
             '--zipFiles', args.zipFiles.toString()
@@ -149,10 +229,13 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 }
                 ;
-                const shell = child_process_1.spawn(this.pythonExePath, temp_args, { windowsVerbatimArguments: true });
+                const shell = child_process_1.execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 120000 });
                 this.activeShells.push(shell);
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
+                    if (albumDir != 'NONE')
+                        fsx.unlinkSync(albumDir);
+                    fsx.rmdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
                     --this.shellsRunning;
                     resolve(true);
                 });
@@ -160,12 +243,12 @@ class worker {
                 shell.stderr.setEncoding('utf8');
                 shell.stdout.on('data', (buffer) => receiveStdout(buffer));
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
-                setTimeout(() => {
-                    shell.kill();
-                }, 120000);
             }
             else {
                 --this.shellsRunning;
+                if (albumDir != 'NONE')
+                    fsx.unlinkSync(albumDir);
+                fsx.rmdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
                 resolve(true);
             }
         });
@@ -399,12 +482,9 @@ function _generateBeatMaps(opType, dir, args) {
         // Files
         totalCount = dir.length;
     }
-    totalCount += 1;
     _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
     _appendMessageTaskLog('Beat Map Synthesizer Started!');
     __mainWorker.initFiles().then(() => {
-        currentCount += 1;
-        _updateTaskProgress(currentCount, totalCount, { mode: 'indeterminate' });
         _appendMessageTaskLog('Initialized Files!');
         let index = -1;
         function generate() {
@@ -414,7 +494,6 @@ function _generateBeatMaps(opType, dir, args) {
                 __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
-                    _appendMessageTaskLog(`Beat Map Generated for ${path.basename(dir[index])}!`);
                     if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
