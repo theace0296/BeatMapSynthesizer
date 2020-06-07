@@ -15,7 +15,7 @@ class __beatMapArgs {
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
-        this.environment = 'DefaultEnvironment';
+        this.environment = 'RANDOM';
     }
 }
 let args = new __beatMapArgs();

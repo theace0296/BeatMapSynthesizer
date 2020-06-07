@@ -45,7 +45,7 @@ class __beatMapArgs {
         this.version = 2;
         this.outDir = util_1.isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? electron_1.app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR;
         this.zipFiles = 0;
-        this.environment = 'DefaultEnvironment';
+        this.environment = 'RANDOM';
     }
 }
 /**
@@ -229,7 +229,7 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 }
                 ;
-                const shell = child_process_1.execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 120000 });
+                const shell = child_process_1.execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 300000 });
                 this.activeShells.push(shell);
                 shell.on('close', () => {
                     _log('generateBeatMaps - Finished');
@@ -245,7 +245,7 @@ class worker {
                 shell.stderr.on('data', (buffer) => receiveStderr(buffer));
                 setTimeout(() => {
                     shell.kill('SIGTERM');
-                }, 150000);
+                }, 450000);
             }
             else {
                 --this.shellsRunning;
@@ -502,13 +502,13 @@ function _generateBeatMaps(opType, dir, args) {
         _appendMessageTaskLog('Initialized Files!');
         let index = -1;
         function generate() {
-            while (__mainWorker.shellsRunning < __coreCount && index < (dir.length - 1)) {
+            while (__mainWorker.shellsRunning < __coreCount && index < dir.length) {
                 __mainWorker.shellsRunning += 1;
                 index += 1;
                 __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
-                    if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
+                    if (index == dir.length && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
                         return;

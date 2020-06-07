@@ -311,7 +311,7 @@ class Main:
     
     #Refractored model runner to allow for only a single mapping function
     def runModel(self, difficulty):
-        self.__print(f"\t{self.song_name} | Modeling using {self.model} model...")
+        self.__print(f"\t{self.song_name} | Modeling {difficulty} using {self.model} model...")
         if self.model == 'random':
             """Function to output the automatically created completely random map (i.e. baseline model) for a provided song. Returns a zipped folder that can be unzipped and placed in the 'CustomMusic' folder in the Beat Saber game directory and played. CAUTION: This is completely random and is likely not enjoyable if even playable!"""
             return self.random_NotesWriter(difficulty)

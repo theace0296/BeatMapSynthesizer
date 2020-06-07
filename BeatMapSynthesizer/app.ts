@@ -31,7 +31,7 @@ class __beatMapArgs {
         this.version = 2;
         this.outDir = isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR;
         this.zipFiles = 0;
-        this.environment = 'DefaultEnvironment';
+        this.environment = 'RANDOM';
     }
 }
 
@@ -242,7 +242,7 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 };
 
-                const shell = execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 120000 });
+                const shell = execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 300000 });
                 this.activeShells.push(shell);
 
                 shell.on('close', () => {
@@ -263,7 +263,7 @@ class worker {
 
                 setTimeout(() => {
                     shell.kill('SIGTERM');
-                }, 150000)
+                }, 450000)
 
             }
             else {
@@ -551,13 +551,13 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
 
         let index = -1;
         function generate() {
-            while (__mainWorker.shellsRunning < __coreCount && index < (dir.length - 1)) {
+            while (__mainWorker.shellsRunning < __coreCount && index < dir.length) {
                 __mainWorker.shellsRunning += 1;
                 index += 1;
                 __mainWorker.generateBeatMaps(dir[index], args).then(() => {
                     currentCount += 1;
                     _updateTaskProgress(currentCount, totalCount);
-                    if (index == (dir.length - 1) && __mainWorker.shellsRunning == 0) {
+                    if (index == dir.length && __mainWorker.shellsRunning == 0) {
                         _updateTaskProgress(totalCount, totalCount);
                         _appendMessageTaskLog('Beat Map Synthesizer Finished!');
                         return;
