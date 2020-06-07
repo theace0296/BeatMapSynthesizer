@@ -1,7 +1,5 @@
 [![Build Status](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_apis/build/status/theace0296.BeatMapSynthesizer?branchName=gui)](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_build/latest?definitionId=1&branchName=gui)
 
----
-
 ![alt text](https://github.com/wvsharber/BeatMapSynthesizer/blob/master/beatMapSynth_Banner.jpg "Image credit: fellow Beat Saber enthusiast, Jacob Joyce")
 
 # BeatMapSynth
@@ -14,9 +12,17 @@ Download the latest release from the [Releases](https://github.com/theace0296/Be
 
 Run 'beat-map-synthesizer-win-version.exe', you will likely get a warning from Windows about it being from an unknown publisher. This is normal until Windows 'learns' that the file is safe. If you are particularly inclined, you may use a service such as [VirusTotal](https://www.virustotal.com/) to check the application file prior to running it.
 
-Once open, the only required step is to specify the file(s) you want to generate Beat Maps for. You may also select the difficulty and model to use for the generation. Lastly, you can change the output directory for the generated .ZIP file, by default this is the same as the directoy the application is in. 
+Once open, the only required step is to specify the file(s)/folder(s) you want to generate Beat Maps for. Selecting a folder will generate tracks for all audio files inside the folder(s). 
 
-After it finishes, a zip folder will appear in either the directory the application is in, or the directory you choose in the application. Unzip this folder, place it in the 'CustomMusic' folder in your Beat Saber system files, start Beat Saber, and find the map under Custom Music! 
+You may also select the difficulty and model to use for the generation. If you select a HMM model, you will also have the option to select the data source for the model (the default is maps rated higher than 70% on [BeatSaver](https://beatsaver.com/)). If you select a segmented model, you will also have the option to select the number of segments to use (the default is 5).
+
+You may select any Beat Saber environment to use for the generated maps, by default each song will get a random environment.
+
+You can change the output directory for the generated .ZIP file or folder, by default this is the same as the directoy the application is in. 
+
+Lastly, you can select whether to output the files in a .ZIP file or in a folder.
+
+After it finishes, a .ZIP file or folder will appear in either the directory the application is in, or the output directory you choose in the application. For a .ZIP file output, unzip the file, place it in the 'CustomMusic' folder in your Beat Saber system files. For a folder output, place the folder in the 'CustomMusic' folder in your Beat Saber system files. Once you start Beat Saber, you can find the map under Custom Music.
 
 That's it! Please enjoy and let me know how it works for you! If you encounter any bugs, feel free to submit an issue, or if you fix it yourself, submit a pull request! 
 
@@ -51,8 +57,5 @@ I also trained a Random Forest Chain Classifier model, yet the maps it generated
 
 ### Evaluation
 Each model has been preliminarily evaluated based on the overall 'playability' of the generated maps, 'smoothness' of block placement, appropriateness of block placement and rate based on difficulty level. Full user testing surveys are planned, and parties interested in participating should contact me for inclusion! 
-
-## Deployment
-In addition to this GitHub repo (which contains a lot of exploratory and development code), a standalone executable program will be available for download and use on Mac OSX and Windows systems. If you are comfortable setting up a Python environment with conda, you can clone this repo, install the conda environment in `environment.yml`, and run the `beatmapsynth.py` script from the command line. Full instructions are given in the _Installation and Use_ section.
 
 ---
