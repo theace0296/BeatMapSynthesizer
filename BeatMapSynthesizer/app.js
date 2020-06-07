@@ -43,9 +43,10 @@ class __beatMapArgs {
         this.model = 'random';
         this.k = 5;
         this.version = 2;
-        this.outDir = util_1.isNullOrUndefined(process.env.PORTABLE_EXECUTABLE_DIR) ? electron_1.app.getAppPath() : process.env.PORTABLE_EXECUTABLE_DIR;
+        this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
         this.environment = 'RANDOM';
+        this.lightsIntensity = 9;
     }
 }
 /**
@@ -179,6 +180,7 @@ class worker {
             '-k', args.k.toString(),
             '--version', args.version.toString(),
             '--environment', `"${args.environment}"`,
+            '--lightsIntensity', args.lightsIntensity.toString(),
             '--albumDir', `"${albumDir.normalize().replace(/\\/gi, "/")}"`,
             '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,

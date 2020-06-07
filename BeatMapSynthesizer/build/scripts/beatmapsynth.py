@@ -22,32 +22,42 @@ warnings.filterwarnings('ignore', "PySoundFile failed. Trying audioread instead.
 
 
 class Main:
-    def __init__(self, song_path, song_name, difficulty, model, k, version, environment, albumDir, outDir, zipFiles):
+    def __init__(self, song_path, song_name, difficulty, model, k, version, environment, lightsIntensity, albumDir, outDir, zipFiles):
         self.song_path = song_path
         if song_name is None:
             self.song_name = self.getSongNameFromMetadata()
         else:
             self.song_name = song_name
+
         self.seed = 0
         for char in song_name:
             self.seed = int(f"{self.seed}{ord(char)}")
         while (self.seed > 2**32 - 1):
             self.seed = int(self.seed / (2**32 - 1))
         np.random.seed(self.seed)
+
         self.difficulty = difficulty
         self.model = model
+
         if k is None:
             self.k = 5
         else:
             self.k = k
+
         if version is None:
             self.version = 2
         else:
             self.version = version
+
         if environment is None:
             self.environment = 'DefaultEnvironment'
         else:
             self.environment = environment
+
+        if lightsIntensity is None:
+            self.eventColorSwapOffset = 2.5
+        else:
+            self.eventColorSwapOffset = (11.5 - lightsIntensity)
 
         if albumDir is None or albumDir == 'NONE':
             self.albumDir = 'cover.jpg'
@@ -57,8 +67,10 @@ class Main:
         self.outDir = outDir
         self.zipFiles = zipFiles
         self.workingDir = f"{self.outDir}/{self.song_name}"
+
         if not os.path.exists(self.workingDir):
             os.makedirs(self.workingDir)
+
         self.tracks = {
                     'bpm': 0,
                     'beat_times': [],
@@ -231,13 +243,92 @@ class Main:
 
     def eventsWriter(self, difficulty):
         """Placeholder function for writing a list of events to be incorporated into a beatmap file. May have future support."""
-        if self.model == 'rate_modulated_segmented_HMM':
-            # Use self.tracks[diff.casefold()]['modulated_beat_list']
-            events_list = []
-            return events_list
-        else:
-            events_list = []
-            return events_list
+        events_list = [{'_time': 0, '_type': 4, '_value': 0}] # Set an event to be at time 0
+
+        """
+        _type
+        0 : Back Laser
+        1 : Track Neons
+        2 : Left Laser
+        3 : Right Laser
+        4 : Primary Light
+        5 :
+        6 : 
+        7 : 
+        8 : Ring Rotation (uses value of 0, and swaps rotation each time)
+        9 : Small Ring Zoom (uses value of 0, and zooms in/out depending on if it is currently zoomed out/in)
+        10 :
+        11 :
+        12 : Left Laser Speed (value is 0-12, higher value = higher speed)
+        13 : Right Laser Speed (value is 0-12, higher value = higher speed)
+        """
+        eventTypes = {'Lights': 4,
+                      'Lasers': [0,1,2,3],
+                      'Rings': [8,9],
+                      'Speeds': [12,13]}
+
+        """
+        _value
+        0 : Off
+        1 : Blue Normal
+        2 : Blue Fade In
+        3 : Blue Fade Out
+        4 : 
+        5 : Red Normal
+        6 : Red Fade In
+        7 : Red Fade Out
+        """
+        eventValues = {'Off': 0,
+                       'Normal': [1,5],
+                       'FadeIn': [2,6],
+                       'FadeOut': [3,7]}
+
+        lastEventTime = 0
+        lastEventColor = 0
+        lastEventIntensity = 'Off'
+        lastEventRing = 0
+        # Offset is applied to change the lighting every n'th second
+        eventColorSwapInterval = round(self.tracks['bpm'] / 60) * self.eventColorSwapOffset
+
+        for note in self.tracks[difficulty.casefold()]['notes_list']:
+            if (note['_time'] - lastEventTime) > eventColorSwapInterval:
+                color = 0
+                intensity = 'Normal'
+
+                if lastEventIntensity == 'Off' or lastEventIntensity == 'FadeOut':
+                    intensity = 'FadeIn'
+                    color = 0 if lastEventColor else 1
+                if lastEventIntensity == 'Normal':
+                    intensity = 'FadeOut'
+                    color = lastEventColor
+                if lastEventIntensity == 'FadeIn':
+                    intensity = 'Normal'
+                    color = lastEventColor
+
+                event = {'_time': note['_time'],
+                         '_type': eventTypes['Lights'],
+                         '_value': eventValues[intensity][color]}
+                events_list.append(event)
+                lastEventTime = note['_time']
+            else:
+                if lastEventRing > 2:
+                    lastEventRing = 0
+                ring = 1 if lastEventRing > 0 else 0
+                lastEventRing = lastEventRing + 1
+                
+                event = {'_time': note['_time'],
+                         '_type': eventTypes['Rings'][ring],
+                         '_value': eventValues['Off']}
+                events_list.append(event)
+
+        return events_list
+        #if self.model == 'rate_modulated_segmented_HMM':
+        #    # Use self.tracks[diff.casefold()]['modulated_beat_list']
+        #    events_list = []
+        #    return events_list
+        #else:
+        #    events_list = []
+        #    return events_list
 
     def obstaclesWriter(self, difficulty):
         """Placeholder function for writing a list of obstacles to be incorporated into a beatmap file."""
@@ -408,7 +499,7 @@ class Main:
         notes_list = []
         line_index = [0, 1, 2, 3]
         line_layer = [0, 1, 2]
-        types = [0, 1, 2, 3]
+        types = [0, 1, 3]
         directions = list(range(0, 8))
         #self.tracks['beat_times'] = [float(x) for x in self.tracks['beat_times']]
         self.tracks['beat_times'] = [ x * (self.tracks['bpm'] / 60) for x in self.tracks['beat_times'] ] #list(range(len(self.tracks['beat_times'])))
@@ -816,6 +907,7 @@ if __name__ == '__main__':
     parser.add_argument('-k', type=int, help="Number of expected segments for segmented model. Default 5", default=5, required=False)
     parser.add_argument('--version', type=int, help="Version of HMM model to use: 1 (90% rating or greater) or 2 (70% rating or greater)", default=2, required=False)
     parser.add_argument('--environment', type=str, help="Environment to use in Beat Saber", required=False)
+    parser.add_argument('--lightsIntensity', type=int, help="Intensity of lighting effects", default=9, required=False)
     parser.add_argument('--albumDir', type=str, help="Path to album cover art to use", required=False)
     parser.add_argument('--workingDir', type=str, help="Directory of scripts folder (this is automatically done, do not use this argument!)", required=True)
     parser.add_argument('--outDir', type=str, help="Directory to save outputed files to. Default is the current directory.", required=False)
@@ -834,11 +926,12 @@ if __name__ == '__main__':
     testFile.write(f"K: {args.k}\n")
     testFile.write(f"Version: {args.version}\n")
     testFile.write(f"Environment: {args.environment}\n")
+    testFile.write(f"Lighting Intensity: {args.lightsIntensity}\n")
     testFile.write(f"Album Directory: {args.albumDir}\n")
     testFile.write(f"Out Directory: {args.outDir}\n")
     testFile.write(f"Zip Files: {args.zipFiles}\n")
     testFile.close()
     
-    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.environment, args.albumDir, args.outDir, args.zipFiles)
+    main = Main(args.song_path, args.song_name, args.difficulty, args.model, args.k, args.version, args.environment, args.lightsIntensity, args.albumDir, args.outDir, args.zipFiles)
     main.generateBeatMap()
     

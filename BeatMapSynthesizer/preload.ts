@@ -13,6 +13,7 @@ class __beatMapArgs {
     outDir: string;
     zipFiles: number;
     environment: string;
+    lightsIntensity: number;
 
     constructor() {
         this.dir = '';
@@ -23,6 +24,7 @@ class __beatMapArgs {
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
         this.environment = 'RANDOM';
+        this.lightsIntensity = 9;
     }
 }
 
@@ -87,6 +89,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         args.k = parseInt((document.getElementById('numSegmentsInput') as HTMLInputElement).value, 10);
         args.version = parseInt((document.getElementById('datalist') as HTMLSelectElement).value, 10);
+        args.lightsIntensity = parseInt((document.getElementById('lightsIntensity') as HTMLInputElement).value, 10);
         args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;
         ipcRenderer.send('__generateBeatMap__', currentOperationType, selectedDirs, args);
     });
