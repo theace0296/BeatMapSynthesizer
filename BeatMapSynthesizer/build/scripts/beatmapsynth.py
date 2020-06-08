@@ -548,12 +548,9 @@ class Main:
     def HMM_NotesWriter(self, difficulty):
         """Writes a list of notes based on a Hidden Markov Model walk."""
         #Load model
-        if self.version == 1:
-            with open(f"./models/HMM_{difficulty}.pkl", 'rb') as m:
-                MC = pickle.load(m)
-        elif self.version == 2:
-            with open(f"./models/HMM_{difficulty}_v2.pkl", 'rb') as m:
-                MC = pickle.load(m)
+        with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
+            MC = pickle.load(m)
+
         #Set note placement rate dependent on difficulty level
         counter = 2
         beats = []
@@ -703,12 +700,8 @@ class Main:
     def segmentedHMM_NotesWriter(self, difficulty):
         """This function writes the list of notes based on the segmented HMM model."""
         #Load model:
-        if self.version == 1:
-            with open(f"./models/HMM_{difficulty}.pkl", 'rb') as m:
-                MC = pickle.load(m)
-        elif self.version == 2:
-            with open(f"./models/HMM_{difficulty}_v2.pkl", 'rb') as m:
-                MC = pickle.load(m)
+        with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
+            MC = pickle.load(m)
             
         segments, beat_times, tempo = self.laplacianSegmentation()
         segments_df = self.segmentsToDataFrame(segments)
@@ -867,12 +860,9 @@ class Main:
     def rateModulatedSegmentedHMM_NotesWriter(self, difficulty):
         """Function to write the notes to a list after predicting with the rate modulated segmented HMM model."""
         #Load model:
-        if self.version == 1:
-            with open(f"./models/HMM_{difficulty}.pkl", 'rb') as m:
-                MC = pickle.load(m)
-        elif self.version == 2:
-            with open(f"./models/HMM_{difficulty}_v2.pkl", 'rb') as m:
-                MC = pickle.load(m)
+        with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
+            MC = pickle.load(m)
+
         segments, beat_times, tempo = self.laplacianSegmentation()
         self.tracks[difficulty.casefold()]['modulated_beat_list'] = self.amplitudeRateModulation(difficulty)
         segments_df = self.segmentsToDataFrameRateModulated(segments, difficulty)
