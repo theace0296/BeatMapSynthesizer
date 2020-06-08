@@ -310,16 +310,17 @@ class Main:
                          '_value': eventValues[intensity][color]}
                 events_list.append(event)
                 lastEventTime = note['_time']
-            else:
-                if lastEventRing > 2:
-                    lastEventRing = 0
+                lastEventColor = color
+                lastEventIntensity = intensity
+            if lastEventRing > 2:
+                lastEventRing = 0
                 ring = 1 if lastEventRing > 0 else 0
-                lastEventRing = lastEventRing + 1
                 
                 event = {'_time': note['_time'],
                          '_type': eventTypes['Rings'][ring],
                          '_value': eventValues['Off']}
                 events_list.append(event)
+                lastEventRing = lastEventRing + 1
 
         return events_list
         #if self.model == 'rate_modulated_segmented_HMM':
