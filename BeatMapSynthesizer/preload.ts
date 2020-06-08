@@ -89,7 +89,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
         args.k = parseInt((document.getElementById('numSegmentsInput') as HTMLInputElement).value, 10);
         args.version = parseInt((document.getElementById('datalist') as HTMLSelectElement).value, 10);
-        args.lightsIntensity = parseInt((document.getElementById('lightsIntensity') as HTMLInputElement).value, 10);
+        args.lightsIntensity = parseInt((document.getElementById('lightsIntensityInput') as HTMLInputElement).value, 10);
         args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;
         ipcRenderer.send('__generateBeatMap__', currentOperationType, selectedDirs, args);
     });

@@ -96,8 +96,9 @@ class worker {
                 fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion)
                     .then(() => {
                         let files: string[] = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
-                            "models/HMM_easy.pkl", "models/HMM_easy_v2.pkl", "models/HMM_expert.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus.pkl",
-                            "models/HMM_expertPlus_v2.pkl", "models/HMM_hard.pkl", "models/HMM_hard_v2.pkl", "models/HMM_normal.pkl", "models/HMM_normal_v2.pkl"];
+                            "models/HMM_easy_v1.pkl", "models/HMM_normal_v1.pkl", "models/HMM_hard_v1.pkl", "models/HMM_expert_v1.pkl", "models/HMM_expertPlus_v1.pkl",
+                            "models/HMM_easy_v2.pkl", "models/HMM_normal_v2.pkl", "models/HMM_hard_v2.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus_v2.pkl", 
+                            "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl"];
 
                         for (let file of files) {
                             fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
