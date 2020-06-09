@@ -27,11 +27,7 @@ steps:
     downloadType: 'specific'
     itemPattern: '**/*.pkl'
     downloadPath: '$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts'
-
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: 'Get-ChildItem -Recurse -Path "$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts"'
+  displayName: 'Download models'
 
 - task: NodeTool@0
   inputs:
