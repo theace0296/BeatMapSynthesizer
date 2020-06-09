@@ -1,4 +1,5 @@
-[![Build Status](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_apis/build/status/theace0296.BeatMapSynthesizer?branchName=gui)](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_build/latest?definitionId=1&branchName=gui)
+### App build: [![Build Status](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_apis/build/status/theace0296.BeatMapSynthesizer?branchName=gui)](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_build/latest?definitionId=1&branchName=gui)
+### Models: [![Build Status](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_apis/build/status/BeatMapSynthesizerModels?branchName=master)](https://dev.azure.com/ChaseRosendale/BeatMapSynthesizer/_build/latest?definitionId=2&branchName=master)
 
 ![alt text](https://github.com/wvsharber/BeatMapSynthesizer/blob/master/beatMapSynth_Banner.jpg "Image credit: fellow Beat Saber enthusiast, Jacob Joyce")
 
