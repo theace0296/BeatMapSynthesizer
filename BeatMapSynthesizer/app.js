@@ -115,59 +115,73 @@ class worker {
     async generateBeatMaps(dir, args) {
         _log('generateBeatMaps - Start');
         let metadata = await mm.parseFile(dir);
+        _log('generateBeatMaps - Metadata Loaded');
         let trackname = sanitize_filename_1.default(metadata.common.title);
+        _log('generateBeatMaps - Song Title Found');
         let artistname = sanitize_filename_1.default(metadata.common.artist);
-        let embeddedart;
-        for (let i = 0; i < metadata.common.picture.length; i++) {
-            let currentType = metadata.common.picture[i].type.toLowerCase();
-            if (currentType == 'cover (front)' || currentType == 'cover art (front)' ||
-                currentType == 'pic' || currentType == 'apic' || currentType == 'covr' ||
-                currentType == 'metadata_block_picture' || currentType == 'wm/picture' ||
-                currentType == 'picture') {
-                embeddedart = metadata.common.picture[i];
-                _log('Embedded art found!');
-                break;
+        _log('generateBeatMaps - Artist Found');
+        let embeddedart = null;
+        _log('generateBeatMaps - Searching for embedded art');
+        if (!util_1.isNullOrUndefined(metadata.common.picture)) {
+            for (let i = 0; i < metadata.common.picture.length; i++) {
+                let currentType = metadata.common.picture[i].type.toLowerCase();
+                if (currentType == 'cover (front)' || currentType == 'cover art (front)' ||
+                    currentType == 'pic' || currentType == 'apic' || currentType == 'covr' ||
+                    currentType == 'metadata_block_picture' || currentType == 'wm/picture' ||
+                    currentType == 'picture') {
+                    embeddedart = metadata.common.picture[i];
+                    _log('generateBeatMaps - Embedded art found!');
+                    break;
+                }
             }
         }
         let albumDir = "NONE";
-        fsx.mkdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
-        if (embeddedart.data.length > 0) {
-            _log('Embedded art processing!');
-            let convertedImage;
-            let newBuffer;
-            const imgDir = path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`, 'cover.jpg');
-            switch (embeddedart.format.toLowerCase()) {
-                case 'image/bmp':
-                    convertedImage = await jimp_1.default.read(embeddedart.data);
-                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
-                    fsx.writeFileSync(imgDir, newBuffer);
-                    albumDir = imgDir;
-                    break;
-                case 'image/gif':
-                    convertedImage = await jimp_1.default.read(embeddedart.data);
-                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
-                    fsx.writeFileSync(imgDir, newBuffer);
-                    albumDir = imgDir;
-                    break;
-                case 'image/jpeg':
-                    _log('Embedded art writing!');
-                    fsx.writeFileSync(imgDir, embeddedart.data);
-                    albumDir = imgDir;
-                    break;
-                case 'image/png':
-                    convertedImage = await jimp_1.default.read(embeddedart.data);
-                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
-                    fsx.writeFileSync(imgDir, newBuffer);
-                    albumDir = imgDir;
-                    break;
-                case 'image/tiff':
-                    convertedImage = await jimp_1.default.read(embeddedart.data);
-                    newBuffer = convertedImage.getBufferAsync('image/jpeg');
-                    fsx.writeFileSync(imgDir, newBuffer);
-                    albumDir = imgDir;
-                    break;
+        fsx.mkdirSync(path.join(this.tempDir.normalize(), `${trackname} - ${artistname}`));
+        _log('generateBeatMaps - Search for embedded art finished');
+        if (!util_1.isNullOrUndefined(embeddedart)) {
+            if (embeddedart.data.length > 0) {
+                _log('generateBeatMaps - Embedded art processing!');
+                let convertedImage;
+                let newBuffer;
+                const imgDir = path.join(this.tempDir.normalize(), `${trackname} - ${artistname}`, 'cover.jpg');
+                switch (embeddedart.format.toLowerCase()) {
+                    case 'image/bmp':
+                        _log('generateBeatMaps - Embedded art writing!');
+                        convertedImage = await jimp_1.default.read(embeddedart.data);
+                        newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                        fsx.writeFileSync(imgDir, newBuffer);
+                        albumDir = imgDir;
+                        break;
+                    case 'image/gif':
+                        _log('generateBeatMaps - Embedded art writing!');
+                        convertedImage = await jimp_1.default.read(embeddedart.data);
+                        newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                        fsx.writeFileSync(imgDir, newBuffer);
+                        albumDir = imgDir;
+                        break;
+                    case 'image/jpeg':
+                        _log('generateBeatMaps - Embedded art writing!');
+                        fsx.writeFileSync(imgDir, embeddedart.data);
+                        albumDir = imgDir;
+                        break;
+                    case 'image/png':
+                        _log('generateBeatMaps - Embedded art writing!');
+                        convertedImage = await jimp_1.default.read(embeddedart.data);
+                        newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                        fsx.writeFileSync(imgDir, newBuffer);
+                        albumDir = imgDir;
+                        break;
+                    case 'image/tiff':
+                        _log('generateBeatMaps - Embedded art writing!');
+                        convertedImage = await jimp_1.default.read(embeddedart.data);
+                        newBuffer = convertedImage.getBufferAsync('image/jpeg');
+                        fsx.writeFileSync(imgDir, newBuffer);
+                        albumDir = imgDir;
+                        break;
+                }
             }
         }
+        _log('generateBeatMaps - Setting beat map parameters');
         if (args.environment == 'RANDOM') {
             let environments = ["DefaultEnvironment", "BigMirrorEnvironment", "Origins", "NiceEnvironment", "TriangleEnvironment", "KDAEnvironment", "DragonsEnvironment",
                 "MonstercatEnvironment", "CrabRaveEnvironment", "PanicEnvironment", "RocketEnvironment", "GreenDayEnvironment", "GreenDayGrenadeEnvironment"];
@@ -187,6 +201,7 @@ class worker {
             '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
             '--zipFiles', args.zipFiles.toString()
         ];
+        _log('generateBeatMaps - Checking if beat map exists');
         let beatMapExists = (fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}`, 'info.dat')) || fsx.existsSync(path.join(args.outDir, `${trackname} - ${artistname}.zip`)));
         return new Promise(resolve => {
             if (!beatMapExists) {
@@ -232,6 +247,7 @@ class worker {
                     return receiveInternal(data, 'stderr');
                 }
                 ;
+                _log('generateBeatMaps - Generating beat map');
                 const shell = child_process_1.execFile(this.pythonExePath, temp_args, { windowsVerbatimArguments: true, timeout: 300000 });
                 this.activeShells.push(shell);
                 shell.on('close', () => {

@@ -426,21 +426,12 @@ class Main:
             self.__print('Please specify model for mapping.')
 
     def removeBadNotes(self, notes_list):
-        redNotes = []
-        blueNotes = []
-
         #Remove potential notes that come too early in the song:
         for i, x in enumerate(notes_list):
             if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 2:
                 del notes_list[i]
             elif notes_list[i]['_time'] > self.tracks['beat_times'][-1]:
                 del notes_list[i]
-            if notes_list[i]['_type'] == 0:
-                redNotes.append(notes_list[i])
-            elif notes_list[i]['_type'] == 1:
-                blueNotes.append(notes_list[i])
-
-
 
         """
         CutDirs
@@ -492,33 +483,31 @@ class Main:
                         3: [6,2,4]}
 
         lastNote = notes_list[0]
-        lastRedNote = redNotes[0]
-        lastBlueNote = blueNotes[0]
 
-        for i in range(1, len(notes_list) - 1):
-            note = notes_list[i]
-            try: 
-                if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
-                    if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
-                        note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
+        #for i in range(1, len(notes_list)):
+        #    note = notes_list[i]
+        #    try: 
+        #        if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
+        #            if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
+        #                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
 
-                    if note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and note['_type'] != lastNote['_type']:
-                        if int(np.random.choice([0,1])):
-                            note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
-                        else:
-                            note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
+        #            if note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and note['_type'] != lastNote['_type']:
+        #                if int(np.random.choice([0,1])):
+        #                    note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
+        #                else:
+        #                    note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
-                if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-                if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-                if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-            except Exception:
-                traceback.print_exc()
-                _print(json.dumps(note, indent=4))
+        #        if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
+        #            note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+        #        if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
+        #            note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+        #        if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
+        #            note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+        #    except Exception:
+        #        traceback.print_exc()
+        #        self.__print(json.dumps(note, indent=4))
 
-            lastNote = note
+        #    lastNote = note
 
         return notes_list
 
