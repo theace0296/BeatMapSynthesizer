@@ -494,7 +494,7 @@ class Main:
         lastRedNote = redNotes[0]
         lastBlueNote = blueNotes[0]
 
-        for i in range(1, len(notes_list)):
+        for i in range(1, len(notes_list) - 1):
             note = notes_list[i]
             if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
                 if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
