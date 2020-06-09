@@ -19,6 +19,7 @@ import argparse
 import shutil
 import warnings
 warnings.filterwarnings('ignore', "PySoundFile failed. Trying audioread instead.")
+import traceback
 
 
 class Main:
@@ -496,22 +497,26 @@ class Main:
 
         for i in range(1, len(notes_list) - 1):
             note = notes_list[i]
-            if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
-                if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
+            try: 
+                if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
+                    if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
+                        note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
 
-                if note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and note['_type'] != lastNote['_type']:
-                    if int(np.random.choice([0,1])):
-                        note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
-                    else:
-                        note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
+                    if note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and note['_type'] != lastNote['_type']:
+                        if int(np.random.choice([0,1])):
+                            note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
+                        else:
+                            note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
-            if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
-                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-            if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
-                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-            if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
-                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+                if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
+                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+                if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
+                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+                if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
+                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+            except Exception:
+                traceback.print_exc()
+                _print(json.dumps(note, indent=4))
 
             lastNote = note
 
