@@ -26,7 +26,7 @@ steps:
     buildVersionToDownload: 'latest'
     downloadType: 'specific'
     itemPattern: '*.pkl'
-    downloadPath: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/build/scripts/models'
+    downloadPath: '$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/models'
 
 - task: NodeTool@0
   inputs:
@@ -47,7 +47,7 @@ steps:
     script: |
       python -m pip install --upgrade pip
       python -m pip install wheel
-      python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/build/scripts/requirements.txt
+      python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
       python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
       python -m pip install https://github.com/librosa/librosa/zipball/main
       $pyPath = python -c "import sys; print(sys.executable)"
@@ -58,7 +58,7 @@ steps:
 
 - script: |
     npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist
-  workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer'
+  workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Build app'
 
 - task: PowerShell@2
@@ -70,22 +70,22 @@ steps:
       $env:VERSION = $parsedversion
       Write-Host "##vso[task.setvariable variable=version]$parsedversion"
       "Using version: $($env:VERSION)"
-    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer'
+    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
   displayName: 'Parse version number to variable'
 
 - task: CopyFiles@2
   inputs:
-    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/dist'
+    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/dist'
     Contents: |
       beat-map-synthesizer-win-$(version).exe
-    TargetFolder: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/publish'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
     CleanTargetFolder: true
     OverWrite: true
   displayName: 'Stage app files'
 
 - task: PublishBuildArtifacts@1
   inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/publish'
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
     ArtifactName: 'beat-map-synthesizer-win-$(version)'
     publishLocation: 'Container'
   displayName: 'Publish to build artifact'
