@@ -525,7 +525,7 @@ class Main:
                     note = {'_time': row['_time'],
                             '_lineIndex': int(row[f"notes_lineIndex_{num}"]),
                             '_lineLayer': int(row[f"notes_lineLayer_{num}"]),
-                            '_type': num,
+                            '_type': int(num),
                             '_cutDirection': int(row[f"notes_cutDirection_{num}"])}
                     notes_list.append(note)
         return self.removeBadNotes(notes_list)
