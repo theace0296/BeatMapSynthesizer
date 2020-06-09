@@ -13,25 +13,20 @@ trigger:
 pool:
   vmImage: 'windows-latest'
 
-resources:
-  repositories:
-    - repository: BeatMapSynthesizerModels
-      type: git
-      name: BeatMapSynthesizer/BeatMapSynthesizerModels
-
 steps:
 - checkout: self
   persistCredentials: true
   clean: true
-- checkout: BeatMapSynthesizerModels
-  clean: true
 
-- task: CopyFiles@2
+- task: DownloadBuildArtifacts@0
   inputs:
-    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizerModels/models'
-    Contents: '**'
-    TargetFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/build/scripts/models'
-  displayName: 'Copy model files to source dir'
+    buildType: 'specific'
+    project: '948ea76e-bd88-4f2b-9878-62555f15fa26'
+    pipeline: '2'
+    buildVersionToDownload: 'latest'
+    downloadType: 'specific'
+    itemPattern: '*.pkl'
+    downloadPath: '$(Build.SourcesDirectory)/BeatMapSynthesizer/BeatMapSynthesizer/build/scripts/models'
 
 - task: NodeTool@0
   inputs:
