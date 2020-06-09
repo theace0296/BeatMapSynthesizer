@@ -290,8 +290,11 @@ class Main:
         # Offset is applied to change the lighting every n'th second
         eventColorSwapInterval = round(self.tracks['bpm'] / 60) * self.eventColorSwapOffset
 
+        firstNote = self.tracks[difficulty.casefold()]['notes_list'][0]
+        lastNote = self.tracks[difficulty.casefold()]['notes_list'][len(self.tracks[difficulty.casefold()]['notes_list']) - 1]
+
         for note in self.tracks[difficulty.casefold()]['notes_list']:
-            if (note['_time'] - lastEventTime) > eventColorSwapInterval:
+            if (note['_time'] - lastEventTime) > eventColorSwapInterval and note != lastNote and note != firstNote:
                 color = 0
                 intensity = 'Normal'
 
@@ -312,15 +315,28 @@ class Main:
                 lastEventTime = note['_time']
                 lastEventColor = color
                 lastEventIntensity = intensity
-            if lastEventRing > 2:
-                lastEventRing = 0
-                ring = 1 if lastEventRing > 0 else 0
-                
+
+            elif note == lastNote:
                 event = {'_time': note['_time'],
-                         '_type': eventTypes['Rings'][ring],
+                         '_type': eventTypes['Lights'],
                          '_value': eventValues['Off']}
                 events_list.append(event)
-                lastEventRing = lastEventRing + 1
+
+            elif note == firstNote:
+                event = {'_time': note['_time'],
+                         '_type': eventTypes['Lights'],
+                         '_value': eventValues['Off']}
+                events_list.append(event)
+
+            if lastEventRing > 2:
+                lastEventRing = 0
+            ring = 1 if lastEventRing > 0 else 0
+                
+            event = {'_time': note['_time'],
+                        '_type': eventTypes['Rings'][ring],
+                        '_value': eventValues['Off']}
+            events_list.append(event)
+            lastEventRing = lastEventRing + 1
 
         return events_list
         #if self.model == 'rate_modulated_segmented_HMM':
