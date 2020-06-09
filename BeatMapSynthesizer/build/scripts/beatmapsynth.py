@@ -181,7 +181,7 @@ class Main:
         info = {'_version': '2.0.0',
             '_songName': f"{self.song_name}",
             '_songSubName': '',
-            '_songAuthorName': '',
+            '_songAuthorName': 'BeatMapSynth',
             '_levelAuthorName': 'BeatMapSynth',
             '_beatsPerMinute': round(self.tracks['bpm']),
             '_songTimeOffset': 0,
@@ -301,11 +301,11 @@ class Main:
                 if lastEventIntensity == 'Off' or lastEventIntensity == 'FadeOut':
                     intensity = 'FadeIn'
                     color = 0 if lastEventColor else 1
-                if lastEventIntensity == 'Normal':
-                    intensity = 'FadeOut'
-                    color = lastEventColor
                 if lastEventIntensity == 'FadeIn':
                     intensity = 'Normal'
+                    color = lastEventColor
+                if lastEventIntensity == 'Normal':
+                    intensity = 'FadeOut'
                     color = lastEventColor
 
                 event = {'_time': note['_time'],
@@ -339,23 +339,12 @@ class Main:
             lastEventRing = lastEventRing + 1
 
         return events_list
-        #if self.model == 'rate_modulated_segmented_HMM':
-        #    # Use self.tracks[diff.casefold()]['modulated_beat_list']
-        #    events_list = []
-        #    return events_list
-        #else:
-        #    events_list = []
-        #    return events_list
 
     def obstaclesWriter(self, difficulty):
         """Placeholder function for writing a list of obstacles to be incorporated into a beatmap file."""
-        if self.model == 'rate_modulated_segmented_HMM':
-            # Use self.tracks[diff.casefold()]['modulated_beat_list']
-            obstacles_list = []
-            return obstacles_list
-        else:
-            obstacles_list = []
-            return obstacles_list
+        obstacles_list = []
+
+        return obstacles_list
 
     def zipWriter(self):
         "This function exports the zip folder containing the info.dat, difficulty.dat, cover.jpg, and song.egg files."
@@ -436,64 +425,95 @@ class Main:
             self.__print('Please specify model for mapping.')
 
     def removeBadNotes(self, notes_list):
+        redNotes = []
+        blueNotes = []
+
         #Remove potential notes that come too early in the song:
         for i, x in enumerate(notes_list):
             if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 2:
                 del notes_list[i]
             elif notes_list[i]['_time'] > self.tracks['beat_times'][-1]:
                 del notes_list[i]
-            """
-            CutDirs
-            0 : Up
-            5 : Up-Right
-            3 : Right
-            7 : Down-Right
-            1 : Down
-            6 : Down-Left
-            2 : Left
-            4 : Up-Left
-            """
-            oppositeCutDirs = {0: [3,7,1,6,2], 
-                               5: [7,1,6,2,4], 
-                               3: [0,1,6,2,4], 
-                               7: [0,5,6,2,4], 
-                               1: [0,5,3,2,4], 
-                               6: [0,5,3,7,4], 
-                               2: [0,5,3,7,1], 
-                               4: [5,3,7,1,6]}
+            if notes_list[i]['_type'] == 0:
+                redNotes.append(notes_list[i])
+            elif notes_list[i]['_type'] == 1:
+                blueNotes.append(notes_list[i])
 
-            """
-            line_index
-            Column 1 = Left-most column
-            0 : Column 1
-            1 : Column 2
-            2 : Column 3
-            3 : Column 4
-            """
-            oppositeIndices = {0: [1,2],
-                          1: [0,2,3],
-                          2: [0,1,3],
-                          3: [1,2]}
 
-            """
-            line_layer
-            0 : Bottom
-            1 : Middle
-            2 : Top
-            """
-            oppositeLayers = {0: [1,2],
+
+        """
+        CutDirs
+        0 : Up
+        5 : Up-Right
+        3 : Right
+        7 : Down-Right
+        1 : Down
+        6 : Down-Left
+        2 : Left
+        4 : Up-Left
+        """
+        oppositeCutDirs = {0: [7,1,6], 
+                           5: [1,6,2], 
+                           3: [1,6,2], 
+                           7: [0,4,2], 
+                           1: [0,5,4], 
+                           6: [0,5,3], 
+                           2: [5,3,7], 
+                           4: [3,7,1]}
+
+        """
+        line_index
+        Column 1 = Left-most column
+        0 : Column 1
+        1 : Column 2
+        2 : Column 3
+        3 : Column 4
+        """
+        oppositeIndices = {0: [1,2],
+                           1: [0,2,3],
+                           2: [0,1,3],
+                           3: [1,2]}
+
+        """
+        line_layer
+        0 : Bottom
+        1 : Middle
+        2 : Top
+        """
+        oppositeLayers = {0: [1,2],
                           1: [0,2],
                           2: [0,1]}
 
-            #if i > 1:
-            #    if notes_list[i]['_cutDirection'] != 8 and notes_list[i]['_type'] != 3 and notes_list[i-1]['_time'] - notes_list[i]['_time'] < 1 and notes_list[i]['_type'] == notes_list[i-1]['_type']:
-            #        if notes_list[i]['_cutDirection'] not in oppositeCutDirs[notes_list[i-1]['_cutDirection']]:
-            #            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[notes_list[i-1]['_cutDirection']]))
-            #        if notes_list[i]['_lineIndex'] not in oppositeIndices[notes_list[i-1]['_lineIndex']] and notes_list[i]['_lineLayer'] not in oppositeLayers[notes_list[i-1]['_lineLayer']]:
-            #            if int(np.random.choice([0,1])):
-            #                notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[notes_list[i-1]['_lineIndex']]))
-            #            else:
-            #                notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[notes_list[i-1]['_lineLayer']]))
+        # line_layer 2 can't have cuts inward
+        layerInwards = {2: [7,1,6]}
+        # line_index 0 and 3 can't have cuts inward
+        indexInwards = {0: [5,3,7],
+                        3: [6,2,4]}
+
+        lastNote = notes_list[0]
+        lastRedNote = redNotes[0]
+        lastBlueNote = blueNotes[0]
+
+        for i in range(1, len(notes_list)):
+            note = notes_list[i]
+            if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
+                if note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
+                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
+
+                if note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and note['_type'] != lastNote['_type']:
+                    if int(np.random.choice([0,1])):
+                        note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
+                    else:
+                        note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
+
+            if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
+                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+            if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
+                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+            if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
+                note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+
+            lastNote = note
 
         return notes_list
 

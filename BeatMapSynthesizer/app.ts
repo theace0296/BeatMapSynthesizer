@@ -176,7 +176,7 @@ class worker {
 
         if (args.environment == 'RANDOM') {
             let environments = ["DefaultEnvironment", "BigMirrorEnvironment", "Origins", "NiceEnvironment", "TriangleEnvironment", "KDAEnvironment", "DragonsEnvironment",
-                "MonstercatEnvironment", "CrabRaveEnvironment", "PanicEnvironment", "RocketEnvironment", "GreenDayEnvironment", "GreenDayGrenadeEnvironment", "GlassDesertEnvironment"];
+                "MonstercatEnvironment", "CrabRaveEnvironment", "PanicEnvironment", "RocketEnvironment", "GreenDayEnvironment", "GreenDayGrenadeEnvironment"];
             args.environment = environments[Math.floor(Math.random() * environments.length)];
         }
 
