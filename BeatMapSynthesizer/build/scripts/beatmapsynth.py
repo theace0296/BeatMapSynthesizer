@@ -540,10 +540,6 @@ class Main:
 
                     except Exception:
                         traceback.print_exc()
-                        _print('_________________________________________________________')
-                        _print(f"1.1 Note Validation Error for Note: {i}")
-                        _print(json.dumps(note, indent=4))
-                        _print('_________________________________________________________')
                     try:
                         if (note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and
                                 note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and
@@ -556,17 +552,9 @@ class Main:
 
                     except Exception:
                         traceback.print_exc()
-                        _print('_________________________________________________________')
-                        _print(f"1.2 Note Validation Error for Note: {i}")
-                        _print(json.dumps(note, indent=4))
-                        _print('_________________________________________________________')
 
             except Exception:
                 traceback.print_exc()
-                _print('_________________________________________________________')
-                _print(f"1.0 Note Validation Error for Note: {i}")
-                _print(json.dumps(note, indent=4))
-                _print('_________________________________________________________')
 
             try:
                 if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
@@ -577,10 +565,6 @@ class Main:
                     note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
             except Exception:
                 traceback.print_exc()
-                _print('_________________________________________________________')
-                _print(f"2.0 Note Validation Error for Note: {i}")
-                _print(json.dumps(note, indent=4))
-                _print('_________________________________________________________')
 
             lastNote = note
 
