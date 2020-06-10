@@ -281,7 +281,7 @@ class worker {
             for (let shell of this.activeShells) {
                 shell.kill('SIGTERM');
                 // Kills a PID and all child process
-                child_process_1.exec(`taskkill /pid ${shell.pid} /t`, (err, stdout) => {
+                child_process_1.exec(`taskkill /f /t /pid ${shell.pid}`, (err, stdout) => {
                     console.log('stdout', stdout);
                     console.log('stderr', err);
                 });
@@ -290,7 +290,7 @@ class worker {
                 }
             }
             // Kills a process based on filename of the exe and all child processes
-            child_process_1.exec(`taskkill /im beatmapsynth.exe /t`, (err, stdout) => {
+            child_process_1.exec(`taskkill /f /t /im beatmapsynth.exe`, (err, stdout) => {
                 console.log('stdout', stdout);
                 console.log('stderr', err);
             });

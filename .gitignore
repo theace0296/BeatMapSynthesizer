@@ -1,5 +1,6 @@
 # Visual Studio Config Folder
 .vs
+.vscode
 
 #Keep these files though!
 !BeatMapSynthesizer/*/*
