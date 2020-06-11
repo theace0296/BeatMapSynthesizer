@@ -509,7 +509,8 @@ class Main:
 
     def remove_bad_notes(self, notes_list):
         """Remove notes that come too early in the song"""
-        notes_list = list(filter(lambda note: note['_time'] >= 2, notes_list))
+        beginning_of_song_buffer = round(self.tracks['bpm'] / 60) * 2.0  # Using the BPM we can covert from beats to seconds
+        notes_list = list(filter(lambda note: note['_time'] >= beginning_of_song_buffer, notes_list))  # Only keep notes that come after the 2 seconds into the song
 
         cut_dirs = Notes().cut_dirs
         line_indices = Notes().line_indices
