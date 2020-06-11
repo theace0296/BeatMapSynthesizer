@@ -377,62 +377,83 @@ class Main:
         firstNote = notes_list[0]
         lastNote = notes_list[len(notes_list) - 1]
 
-        for note in self.tracks[difficulty.casefold()]['notes_list']:
+        for note in notes_list:
             # Lights
-            if (note['_time'] - lastEventTime) > eventColorSwapInterval and note != lastNote and note != firstNote:
-                color = 0
-                intensity = 'Normal'
-
-                if lastEventIntensity == 'Off' or lastEventIntensity == 'FadeOut':
-                    intensity = 'FadeIn'
-                    color = 0 if lastEventColor else 1
-                if lastEventIntensity == 'FadeIn':
+            try:
+                if (note['_time'] - lastEventTime) > eventColorSwapInterval and note != lastNote and note != firstNote:
+                    color = 0
                     intensity = 'Normal'
-                    color = lastEventColor
-                if lastEventIntensity == 'Normal':
-                    intensity = 'FadeOut'
-                    color = lastEventColor
 
-                event = {'_time': note['_time'],
-                         '_type': eventTypes['Lights'],
-                         '_value': eventValues[intensity][color]}
+                    if lastEventIntensity == 'Off' or lastEventIntensity == 'FadeOut':
+                        intensity = 'FadeIn'
+                        color = 0 if lastEventColor else 1
+                    if lastEventIntensity == 'FadeIn':
+                        intensity = 'Normal'
+                        color = lastEventColor
+                    if lastEventIntensity == 'Normal':
+                        intensity = 'FadeOut'
+                        color = lastEventColor
 
-                events_list.append(event)
-                lastEventTime = note['_time']
-                lastEventColor = color
-                lastEventIntensity = intensity
+                    event = {'_time': note['_time'],
+                            '_type': eventTypes['Lights'],
+                            '_value': eventValues[intensity][color]}
 
-            elif note == lastNote:
-                event = {'_time': note['_time'],
-                         '_type': eventTypes['Lights'],
-                         '_value': eventValues['Off']}
-                events_list.append(event)
+                    events_list.append(event)
+                    lastEventTime = note['_time']
+                    lastEventColor = color
+                    lastEventIntensity = intensity
 
-            elif note == firstNote:
-                event = {'_time': note['_time'],
-                         '_type': eventTypes['Lights'],
-                         '_value': eventValues['Off']}
-                events_list.append(event)
+                elif note == lastNote:
+                    event = {'_time': note['_time'],
+                            '_type': eventTypes['Lights'],
+                            '_value': eventValues['Off']}
+                    events_list.append(event)
+
+                elif note == firstNote:
+                    event = {'_time': note['_time'],
+                            '_type': eventTypes['Lights'],
+                            '_value': eventValues['Off']}
+                    events_list.append(event)
+            except Exception:
+                traceback.print_exc()
+                _print('_________________________________________________________')
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
+                _print(json.dumps(note, indent=4))
+                _print('_________________________________________________________')
 
             # Rings
-            if lastEventRing > 2:
-                lastEventRing = 0
+            try:
+                if lastEventRing > 2:
+                    lastEventRing = 0
 
-            ring = 1 if lastEventRing > 0 else 0
+                ring = 1 if lastEventRing > 0 else 0
 
-            event = {'_time': note['_time'],
-                     '_type': eventTypes['Rings'][ring],
-                     '_value': eventValues['Off']}
+                event = {'_time': note['_time'],
+                        '_type': eventTypes['Rings'][ring],
+                        '_value': eventValues['Off']}
 
-            events_list.append(event)
-            lastEventRing = lastEventRing + 1
+                events_list.append(event)
+                lastEventRing = lastEventRing + 1
+            except Exception:
+                traceback.print_exc()
+                _print('_________________________________________________________')
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
+                _print(json.dumps(note, indent=4))
+                _print('_________________________________________________________')
 
             # Lasers
-            event = {'_time': note['_time'],
-                     '_type': eventTypes['Lasers'][1],
-                     '_value': eventValues['Normal'][note['_type']]}
+            try:
+                event = {'_time': note['_time'],
+                        '_type': eventTypes['Lasers'][1],
+                        '_value': eventValues['Normal'][note['_type']]}
 
-            events_list.append(event)
+                events_list.append(event)
+            except Exception:
+                traceback.print_exc()
+                _print('_________________________________________________________')
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
+                _print(json.dumps(note, indent=4))
+                _print('_________________________________________________________')
 
         return events_list
 
