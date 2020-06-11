@@ -57,6 +57,8 @@ class __beatMapArgs {
  * 1073741824 is 1024MB in Bytes.
  */
 const __coreCount = (() => {
+    // Temporarily use single threading
+    return 1;
     let workingCores = os_1.cpus().length > 2 ? os_1.cpus().length - 2 : 1;
     if (os_1.totalmem() >= (workingCores * 1073741824)) {
         return workingCores;

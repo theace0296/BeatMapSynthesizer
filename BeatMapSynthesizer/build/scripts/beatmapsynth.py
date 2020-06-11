@@ -92,6 +92,33 @@ def parseArgs():
     return parser.parse_args()
 
 
+class Notes:
+    class CutDirs:
+        Up = 0
+        UpRight = 5
+        Right = 3
+        DownRight = 7
+        Down = 1
+        DownLeft = 6
+        Left = 2
+        UpLeft = 4
+        Dot = 8
+    cut_dirs = CutDirs()
+
+    class Columns:
+        Col1 = 0
+        Col2 = 1
+        Col3 = 2
+        Col4 = 3
+    line_indices = Columns()
+
+    class Rows:
+        Bottom = 0
+        Middle = 1
+        Top = 2
+    line_layers = Rows()
+
+
 class Main:
     def __init__(self, song_path, song_name, difficulty, model, k, version,
                  environment, lightsIntensity, albumDir, outDir, zipFiles):
@@ -249,7 +276,7 @@ class Main:
                 }
 
         with open(f"{self.workingDir}/info.dat", 'w') as f:
-            json.dump(info, f)
+            json.dump(info, f, indent=4)
 
     def write_level_file(self):
         """This function creates the 'level.dat' file."""
@@ -264,7 +291,7 @@ class Main:
                  '_notes': self.tracks[diff.casefold()]['notes_list'],
                  '_obstacles': self.tracks[diff.casefold()]['obstacles_list']}
                 with open(f"{self.workingDir}/{diff}.dat", 'w') as f:
-                    json.dump(level, f)
+                    json.dump(level, f, indent=4)
         else:
             level = {
                  '_version': '2.0.0',
@@ -275,7 +302,7 @@ class Main:
                  '_notes': self.tracks[self.difficulty.casefold()]['notes_list'],
                  '_obstacles': self.tracks[self.difficulty.casefold()]['obstacles_list']}
             with open(f"{self.workingDir}/{self.difficulty}.dat", 'w') as f:
-                json.dump(level, f)
+                json.dump(level, f, indent=4)
 
     def convert_music_file(self):
         """Converts audio file from supported type to EGG"""
@@ -347,6 +374,7 @@ class Main:
         lastNote = notes_list[len(notes_list) - 1]
 
         for note in self.tracks[difficulty.casefold()]['notes_list']:
+            # Lights
             if (note['_time'] - lastEventTime) > eventColorSwapInterval and note != lastNote and note != firstNote:
                 color = 0
                 intensity = 'Normal'
@@ -382,6 +410,7 @@ class Main:
                          '_value': eventValues['Off']}
                 events_list.append(event)
 
+            # Rings
             if lastEventRing > 2:
                 lastEventRing = 0
 
@@ -393,6 +422,13 @@ class Main:
 
             events_list.append(event)
             lastEventRing = lastEventRing + 1
+
+            # Lasers
+            event = {'_time': note['_time'],
+                     '_type': eventTypes['Lasers'][1],
+                     '_value': eventValues['Normal'][note['_type']]}
+
+            events_list.append(event)
 
         return events_list
 
@@ -473,100 +509,160 @@ class Main:
 
     def remove_bad_notes(self, notes_list):
         """Remove notes that come too early in the song"""
-        for i, x in enumerate(notes_list):
-            if notes_list[i]['_time'] >= 0 and notes_list[i]['_time'] <= 2:
-                del notes_list[i]
-            elif notes_list[i]['_time'] > self.tracks['beat_times'][-1]:
-                del notes_list[i]
+        notes_list = list(filter(lambda note: note['_time'] >= 2, notes_list))
 
-        """
-        CutDirs
-        0 : Up
-        5 : Up-Right
-        3 : Right
-        7 : Down-Right
-        1 : Down
-        6 : Down-Left
-        2 : Left
-        4 : Up-Left
-        """
-        oppositeCutDirs = {0: [7, 1, 6],
-                           5: [1, 6, 2],
-                           3: [1, 6, 2],
-                           7: [0, 4, 2],
-                           1: [0, 5, 4],
-                           6: [0, 5, 3],
-                           2: [5, 3, 7],
-                           4: [3, 7, 1]}
+        cut_dirs = Notes().cut_dirs
+        line_indices = Notes().line_indices
+        line_layers = Notes().line_layers
 
-        """
-        line_index
-        Column 1 = Left-most column
-        0 : Column 1
-        1 : Column 2
-        2 : Column 3
-        3 : Column 4
-        """
-        oppositeIndices = {0: [1, 2],
-                           1: [0, 2, 3],
-                           2: [0, 1, 3],
-                           3: [1, 2]}
+        oppositeCutDirs = {cut_dirs.Up:        [cut_dirs.DownRight,   cut_dirs.Down,         cut_dirs.DownLeft],
+                           cut_dirs.UpRight:   [cut_dirs.Down,        cut_dirs.DownLeft,     cut_dirs.Left],
+                           cut_dirs.Right:     [cut_dirs.Down,        cut_dirs.DownLeft,     cut_dirs.Left],
+                           cut_dirs.DownRight: [cut_dirs.Up,          cut_dirs.UpLeft,       cut_dirs.Left],
+                           cut_dirs.Down:      [cut_dirs.Up,          cut_dirs.UpRight,      cut_dirs.UpLeft],
+                           cut_dirs.DownLeft:  [cut_dirs.Up,          cut_dirs.UpRight,      cut_dirs.Right],
+                           cut_dirs.Left:      [cut_dirs.UpRight,     cut_dirs.Right,        cut_dirs.DownRight],
+                           cut_dirs.UpLeft:    [cut_dirs.Right,       cut_dirs.DownRight,    cut_dirs.Down]}
 
-        """
-        line_layer
-        0 : Bottom
-        1 : Middle
-        2 : Top
-        """
-        oppositeLayers = {0: [1, 2],
-                          1: [0, 2],
-                          2: [0, 1]}
+        oppositeCutDir = {cut_dirs.Up:         cut_dirs.Down,
+                          cut_dirs.UpRight:    cut_dirs.DownLeft,
+                          cut_dirs.Right:      cut_dirs.Left,
+                          cut_dirs.DownRight:  cut_dirs.UpLeft,
+                          cut_dirs.Down:       cut_dirs.Up,
+                          cut_dirs.DownLeft:   cut_dirs.UpRight,
+                          cut_dirs.Left:       cut_dirs.Right,
+                          cut_dirs.UpLeft:     cut_dirs.DownRight}
 
-        # line_layer 2 can't have cuts inward
-        layerInwards = {2: [7, 1, 6]}
-        # line_index 0 and 3 can't have cuts inward
-        indexInwards = {0: [5, 3, 7],
-                        3: [6, 2, 4]}
+        cardinalDirs = [cut_dirs.Up, cut_dirs.Right, cut_dirs.Down, cut_dirs.Left]
+        upDownDirs = [cut_dirs.Up, cut_dirs.Down]
+        leftRightDirs = [cut_dirs.Left, cut_dirs.Right]
+
+        oppositeIndices = {line_indices.Col1: [line_indices.Col2, line_indices.Col3],
+                           line_indices.Col2: [line_indices.Col1, line_indices.Col3, line_indices.Col4],
+                           line_indices.Col3: [line_indices.Col1, line_indices.Col2, line_indices.Col4],
+                           line_indices.Col4: [line_indices.Col2, line_indices.Col3]}
+
+        oppositeLayers = {line_layers.Bottom:   [line_layers.Middle, line_layers.Top],
+                          line_layers.Middle:   [line_layers.Bottom, line_layers.Top],
+                          line_layers.Top:      [line_layers.Bottom, line_layers.Middle]}
+
+        # Top Row can't have cuts inward
+        layerInwards = {line_layers.Top: [cut_dirs.DownRight, cut_dirs.Down, cut_dirs.DownLeft]}
+        # Columns 1 and 4 can't have cuts inward
+        indexInwards = {line_indices.Col1: [cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight],
+                        line_indices.Col4: [cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft]}
 
         lastNote = notes_list[0]
 
         for i in range(1, len(notes_list)):
-            note = notes_list[i]
             try:
-                if note['_cutDirection'] != 8 and note['_type'] != 3 and lastNote['_time'] - note['_time'] < 0.5:
+                if notes_list[i]['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_type'] != 3 and lastNote['_time'] - notes_list[i]['_time'] < 1.5:
+
                     try:
-                        if lastNote['_cutDirection'] != 8 and note['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and note['_type'] == lastNote['_type']:
-                            note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
+                        if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and
+                                notes_list[i]['_type'] == lastNote['_type']):
+
+                            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
 
                     except Exception:
                         traceback.print_exc()
+                        _print('_________________________________________________________')
+                        _print(f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(json.dumps(notes_list[i], indent=4))
+                        _print('_________________________________________________________')
                     try:
-                        if (note['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and
-                                note['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and
-                                note['_type'] != lastNote['_type']):
+                        if (notes_list[i]['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and
+                                notes_list[i]['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and
+                                notes_list[i]['_type'] != lastNote['_type']):
 
                             if int(np.random.choice([0, 1])):
-                                note['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
+                                notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
                             else:
-                                note['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
+                                notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
                     except Exception:
                         traceback.print_exc()
+                        _print('_________________________________________________________')
+                        _print(f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(json.dumps(notes_list[i], indent=4))
+                        _print('_________________________________________________________')
+
+                    try:
+                        if notes_list[i]['_time'] == lastNote['_time']:
+
+                            if notes_list[i]['_type'] == lastNote['_type']:
+                                del notes_list[i]
+
+                            else:
+
+                                if notes_list[i]['_lineIndex'] == lastNote['_lineIndex']:
+                                    if notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
+
+                                        choice = int(np.random.choice([0, 1]))
+                                        notes_list[i]['_cutDirection'] = leftRightDirs[choice]
+                                        notes_list[i-1]['_cutDirection'] = oppositeCutDir[notes_list[i]['_cutDirection']]
+
+                                    elif notes_list[i]['_lineIndex'] == line_indices.Col1:
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Left
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Left
+
+                                    elif notes_list[i]['_lineIndex'] == line_indices.Col4:
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Right
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Right
+
+                                elif notes_list[i]['_lineLayer'] == lastNote['_lineLayer']:
+
+                                    if notes_list[i]['_lineLayer'] == line_layers.Bottom:
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Down
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Down
+
+                                    elif notes_list[i]['_lineLayer'] == line_layers.Middle:
+                                        choice = int(np.random.choice([0, 1]))
+                                        notes_list[i]['_cutDirection'] = upDownDirs[choice]
+                                        notes_list[i-1]['_cutDirection'] = oppositeCutDir[notes_list[i]['_cutDirection']]
+
+                                    elif notes_list[i]['_lineLayer'] == line_layers.Top:
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Up
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Up
+
+                    except Exception:
+                        traceback.print_exc()
+                        _print('_________________________________________________________')
+                        _print(f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(json.dumps(notes_list[i], indent=4))
+                        _print('_________________________________________________________')
 
             except Exception:
                 traceback.print_exc()
+                _print('_________________________________________________________')
+                _print(f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                _print(json.dumps(notes_list[i], indent=4))
+                _print('_________________________________________________________')
 
             try:
-                if note['_lineLayer'] == 2 and note['_cutDirection'] in layerInwards[2]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-                if note['_lineIndex'] == 0 and note['_cutDirection'] in indexInwards[0]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
-                if note['_lineIndex'] == 3 and note['_cutDirection'] in indexInwards[3]:
-                    note['_cutDirection'] = int(np.random.choice(oppositeCutDirs[note['_cutDirection']]))
+                if notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
+                    notes_list[i]['_cutDirection'] = cut_dirs.Up
+
+                elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1:
+                    notes_list[i]['_cutDirection'] = cut_dirs.UpLeft
+
+                elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2:
+                    notes_list[i]['_cutDirection'] = cut_dirs.UpRight
+
+                elif notes_list[i]['_lineIndex'] == line_indices.Col1:
+                    notes_list[i]['_cutDirection'] = cut_dirs.Left
+
+                elif notes_list[i]['_lineIndex'] == line_indices.Col4:
+                    notes_list[i]['_cutDirection'] = cut_dirs.Right
+
             except Exception:
                 traceback.print_exc()
+                _print('_________________________________________________________')
+                _print(f"2.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                _print(json.dumps(notes_list[i], indent=4))
+                _print('_________________________________________________________')
 
-            lastNote = note
+            lastNote = notes_list[i]
 
         return notes_list
 
@@ -828,7 +924,7 @@ class Main:
         return notes_list
 
     # Rate Modulated Segmented HMM Note Writing Functions
-    def choose_rate(self, db, difficulty):
+    def choose_rate(self, decibel, difficulty):
         """
         This function modulates the block placement rate by using the average amplitude
         (i.e., 'loudness') across beats to choose how many blocks per beat will be placed.
@@ -837,60 +933,60 @@ class Main:
         If you are finding that your maps are too fast or too slow for you,
         you might want to play with the probabilities in this file.
         """
-        db = np.abs(db)
+        decibel = np.abs(decibel)
         p = None
         if difficulty.casefold() == 'easy'.casefold():
-            if db > 70:
+            if decibel > 70:
                 p = [0.95, 0.05, 0, 0, 0, 0]
-            elif db <= 70 and db > 55:
+            elif decibel <= 70 and decibel > 55:
                 p = [0.90, 0.10, 0, 0, 0, 0]
-            elif db <= 55 and db > 45:
+            elif decibel <= 55 and decibel > 45:
                 p = [0.80, 0.2, 0, 0, 0, 0]
-            elif db <= 45 and db > 35:
+            elif decibel <= 45 and decibel > 35:
                 p = [0.4, 0.5, 0.1, 0, 0, 0]
             else:
                 p = [0.3, 0.6, 0.1, 0, 0, 0]
         elif difficulty.casefold() == 'normal'.casefold():
-            if db > 70:
+            if decibel > 70:
                 p = [0.95, 0.05, 0, 0, 0, 0]
-            elif db <= 70 and db > 55:
+            elif decibel <= 70 and decibel > 55:
                 p = [0.5, 0.5, 0, 0, 0, 0]
-            elif db <= 55 and db > 45:
+            elif decibel <= 55 and decibel > 45:
                 p = [0.3, 0.7, 0, 0, 0, 0]
-            elif db <= 45 and db > 35:
+            elif decibel <= 45 and decibel > 35:
                 p = [0.2, 0.7, 0.1, 0, 0, 0]
             else:
                 p = [0.05, 0.7, 0.25, 0, 0, 0]
         elif difficulty.casefold() == 'hard'.casefold():
-            if db > 70:
+            if decibel > 70:
                 p = [0.95, 0.05, 0, 0, 0, 0]
-            elif db <= 70 and db > 55:
+            elif decibel <= 70 and decibel > 55:
                 p = [0.5, 0.5, 0, 0, 0, 0]
-            elif db <= 55 and db > 45:
+            elif decibel <= 55 and decibel > 45:
                 p = [0.2, 0.6, 0.2, 0, 0, 0]
-            elif db <= 45 and db > 35:
+            elif decibel <= 45 and decibel > 35:
                 p = [0.1, 0.5, 0.4, 0, 0, 0]
             else:
                 p = [0.05, 0.35, 0.6, 0, 0, 0]
         elif difficulty.casefold() == 'expert'.casefold():
-            if db > 70:
+            if decibel > 70:
                 p = [0.8, 0.2, 0, 0, 0, 0]
-            elif db <= 70 and db > 55:
+            elif decibel <= 70 and decibel > 55:
                 p = [0.2, 0.7, 0.1, 0, 0, 0]
-            elif db <= 55 and db > 50:
+            elif decibel <= 55 and decibel > 50:
                 p = [0.1, 0.4, 0.3, 0.2, 0, 0]
-            elif db <= 50 and db > 45:
+            elif decibel <= 50 and decibel > 45:
                 p = [0, 0.05, 0.6, 0.35, 0, 0]
             else:
                 p = [0, 0, 0.35, 0.65, 0, 0]
         elif difficulty.casefold() == 'expertplus'.casefold():
-            if db > 70:
+            if decibel > 70:
                 p = [0, 0.5, 0.4, 0.1, 0, 0]
-            elif db <= 70 and db > 55:
+            elif decibel <= 70 and decibel > 55:
                 p = [0, 0.3, 0.6, 0.1, 0, 0]
-            elif db <= 55 and db > 50:
+            elif decibel <= 55 and decibel > 50:
                 p = [0, 0.1, 0.6, 0.3, 0, 0]
-            elif db <= 50 and db > 45:
+            elif decibel <= 50 and decibel > 45:
                 p = [0, 0.05, 0.1, 0.6, 0.25, 0]
             else:
                 p = [0, 0, 0, 0.5, 0.3, 0.2]
@@ -905,24 +1001,21 @@ class Main:
         """
         # Make amplitude matrix
         D = np.abs(librosa.stft(self.tracks['y']))
-        db = librosa.amplitude_to_db(D, ref=np.max)
+        decibel = librosa.amplitude_to_db(D, ref=np.max)
         # Get beat frames and sync with amplitudes
         tempo, beat_frames = librosa.beat.beat_track(self.tracks['y'], self.tracks['sr'], trim=False)
-        beat_db = pd.DataFrame(librosa.util.sync(db, beat_frames, aggregate=np.mean))
+        beat_decibel = pd.DataFrame(librosa.util.sync(decibel, beat_frames, aggregate=np.mean))
         # Mean amplitude per beat
-        avg_beat_db = beat_db.mean()
+        avg_beat_decibel = beat_decibel.mean()
         # Choose rates and smooth rate transitions
         rates = [0]
         counter = 1
-        while counter < len(avg_beat_db)-1:
-            rate = self.choose_rate(np.mean([avg_beat_db.iloc[counter-1], avg_beat_db.iloc[counter], avg_beat_db.iloc[counter+1]]), difficulty)
+        while counter < len(avg_beat_decibel)-1:
+            rate = self.choose_rate(np.mean([avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
             diff = np.abs(rate - rates[-1])
-            if difficulty.casefold() == 'expert'.casefold() or difficulty.casefold() == 'expertplus'.casefold():
-                maxdiff = 4
-            else:
-                maxdiff = 2
+            maxdiff = 4 if 'expert'.casefold() in difficulty.casefold() else 2
             while diff > maxdiff:
-                rate = self.choose_rate(np.mean([avg_beat_db.iloc[counter-1], avg_beat_db.iloc[counter], avg_beat_db.iloc[counter+1]]), difficulty)
+                rate = self.choose_rate(np.mean([avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
                 diff = rates[-1] - rate
             if rate == 4 and rates[-1] == 4:
                 rate = np.random.choice([0, 1, 2])
