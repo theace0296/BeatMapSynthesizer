@@ -66,6 +66,7 @@ def parseArgs():
     parser.add_argument('--environment',
                         type=str,
                         help="Environment to use in Beat Saber",
+                        default='DefaultEnvironment',
                         required=False)
     parser.add_argument('--lightsIntensity',
                         type=int,
@@ -75,14 +76,17 @@ def parseArgs():
     parser.add_argument('--albumDir',
                         type=str,
                         help="Path to album cover art to use",
+                        default='NONE',
                         required=False)
     parser.add_argument('--workingDir',
                         type=str,
                         help="Working directory, this is automatically set, do not use this!",
+                        default=os.getcwd(),
                         required=True)
     parser.add_argument('--outDir',
                         type=str,
                         help="Directory to save outputed files to. Default: Current directory.",
+                        default=os.getcwd(),
                         required=False)
     parser.add_argument('--zipFiles',
                         type=int,
