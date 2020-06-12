@@ -12,7 +12,6 @@ from io import BytesIO, StringIO, TextIOWrapper
 from zipfile import ZipFile
 
 import audioread
-from joblib import Parallel, delayed
 import librosa
 import markovify
 import numpy as np
@@ -1251,11 +1250,10 @@ if __name__ == '__main__':
     # Write lists for note placement, event placement, and obstacle placement
     _print(f"\t{main.song_name} | Mapping...")
     if main.difficulty.casefold() == 'ALL'.casefold():
-        def mapping(diff):
+        for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
             main.tracks[diff.casefold()]['notes_list'] = main.run_model(diff.casefold())
             main.tracks[diff.casefold()]['events_list'] = main.events_writer(diff.casefold())
             main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(diff.casefold())
-        Parallel(n_jobs=-2, verbose=10)(delayed(mapping)(diff) for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus'])
     else:
         main.tracks[main.difficulty.casefold()]['notes_list'] = (
             main.run_model(main.difficulty.casefold()))
