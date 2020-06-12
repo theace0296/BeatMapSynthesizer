@@ -41,18 +41,16 @@ class __beatMapArgs {
  * `__coreCount` is the 'usable' cores for running multiple beat map generations at once.
  * It is based off of the average system resource usage and will fallback to one processes at a time
  * if system resources are not plentiful.
- * Reserve 2 cores, if possible, for system usage.
- * 1073741824 is 1024MB in Bytes.
+ * Reserve half the cores, if possible, for system usage.
+ * 2147483648 is 2GB in Bytes.
  */
 const __coreCount: number = (() => {
-    // Temporarily use single threading
-    return 1;
-    let workingCores: number = cpus().length > 2 ? cpus().length - 2 : 1;
-    if (totalmem() >= (workingCores * 1073741824)) {
+    let workingCores: number = cpus().length > 2 ? Math.floor(cpus().length / 2) : 1;
+    if (totalmem() >= (workingCores * 2147483648)) {
         return workingCores;
     }
-    else if ((totalmem() / 1073741824) <= workingCores) {
-        return Math.floor(totalmem() / 1073741824);
+    else if ((totalmem() / 2147483648) <= workingCores) {
+        return Math.floor(totalmem() / 2147483648);
     }
     return workingCores;
 })();

@@ -12,6 +12,7 @@ from io import BytesIO, StringIO, TextIOWrapper
 from zipfile import ZipFile
 
 import audioread
+from joblib import Parallel, delayed
 import librosa
 import markovify
 import numpy as np
@@ -395,8 +396,8 @@ class Main:
                         color = lastEventColor
 
                     event = {'_time': note['_time'],
-                            '_type': eventTypes['Lights'],
-                            '_value': eventValues[intensity][color]}
+                             '_type': eventTypes['Lights'],
+                             '_value': eventValues[intensity][color]}
 
                     events_list.append(event)
                     lastEventTime = note['_time']
@@ -405,20 +406,20 @@ class Main:
 
                 elif note == lastNote:
                     event = {'_time': note['_time'],
-                            '_type': eventTypes['Lights'],
-                            '_value': eventValues['Off']}
+                             '_type': eventTypes['Lights'],
+                             '_value': eventValues['Off']}
                     events_list.append(event)
 
                 elif note == firstNote:
                     event = {'_time': note['_time'],
-                            '_type': eventTypes['Lights'],
-                            '_value': eventValues['Off']}
+                             '_type': eventTypes['Lights'],
+                             '_value': eventValues['Off']}
                     events_list.append(event)
             except Exception:
-                traceback.print_exc()
                 _print('_________________________________________________________')
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
-                _print(json.dumps(note, indent=4))
+                _print(traceback.format_exc())
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(json.dumps(event, indent=4))
                 _print('_________________________________________________________')
 
             # Rings
@@ -429,30 +430,31 @@ class Main:
                 ring = 1 if lastEventRing > 0 else 0
 
                 event = {'_time': note['_time'],
-                        '_type': eventTypes['Rings'][ring],
-                        '_value': eventValues['Off']}
+                         '_type': eventTypes['Rings'][ring],
+                         '_value': eventValues['Off']}
 
                 events_list.append(event)
                 lastEventRing = lastEventRing + 1
             except Exception:
-                traceback.print_exc()
                 _print('_________________________________________________________')
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
-                _print(json.dumps(note, indent=4))
+                _print(traceback.format_exc())
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(json.dumps(event, indent=4))
                 _print('_________________________________________________________')
 
             # Lasers
             try:
-                event = {'_time': note['_time'],
-                        '_type': eventTypes['Lasers'][1],
-                        '_value': eventValues['Normal'][note['_type']]}
+                if note['_type'] != 3:
+                    event = {'_time': note['_time'],
+                             '_type': eventTypes['Lasers'][1],
+                             '_value': eventValues['Normal'][note['_type']]}
 
-                events_list.append(event)
+                    events_list.append(event)
             except Exception:
-                traceback.print_exc()
                 _print('_________________________________________________________')
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Note:")
-                _print(json.dumps(note, indent=4))
+                _print(traceback.format_exc())
+                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(json.dumps(event, indent=4))
                 _print('_________________________________________________________')
 
         return events_list
@@ -534,8 +536,51 @@ class Main:
 
     def remove_bad_notes(self, notes_list):
         """Remove notes that come too early in the song"""
-        beginning_of_song_buffer = round(self.tracks['bpm'] / 60) * 2.0  # Using the BPM we can covert from beats to seconds
-        notes_list = list(filter(lambda note: note['_time'] >= beginning_of_song_buffer, notes_list))  # Only keep notes that come after the 2 seconds into the song
+        # Using the BPM we can covert from beats to seconds
+        def seconds(number):
+            return round(self.tracks['bpm'] / 60) * number
+
+        notes_list = list(filter(lambda note: note['_time'] >= seconds(2), notes_list))  # Only keep notes that come after the 2 seconds into the song
+
+        def remove_zeros(number):
+            while number % 10 == 0:
+                number //= 10
+            return number
+
+        temp_notes_list = []
+        index = 0
+        current_note = notes_list[index]
+        while current_note:
+            try:
+                if current_note['_lineIndex'] > 3:
+                    current_note['_lineIndex'] = remove_zeros(current_note['_lineIndex'])
+                elif current_note['_lineIndex'] < 0:
+                    index += 1
+                    current_note = notes_list[index]
+                    continue
+                if current_note['_lineLayer'] > 2:
+                    current_note['_lineLayer'] = remove_zeros(current_note['_lineLayer'])
+                elif current_note['_lineLayer'] < 0:
+                    index += 1
+                    current_note = notes_list[index]
+                    continue
+                if current_note['_cutDirection'] > 8:
+                    current_note['_cutDirection'] = remove_zeros(current_note['_cutDirection'])
+                elif current_note['_cutDirection'] < 0:
+                    index += 1
+                    current_note = notes_list[index]
+                    continue
+                temp_notes_list.append(current_note)
+                index += 1
+                current_note = notes_list[index]
+            except KeyError:
+                index += 1
+                current_note = notes_list[index]
+                continue
+            except IndexError:
+                current_note = None
+
+        notes_list = temp_notes_list
 
         cut_dirs = Notes().cut_dirs
         line_indices = Notes().line_indices
@@ -579,11 +624,12 @@ class Main:
                         line_indices.Col4: [cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft]}
 
         lastNote = notes_list[0]
+        lastRedNote = list(filter(lambda x: x['_type'] == 0, notes_list))[0]
+        lastBlueNote = list(filter(lambda x: x['_type'] == 1, notes_list))[0]
 
         for i in range(1, len(notes_list)):
             try:
-                if notes_list[i]['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_type'] != 3 and lastNote['_time'] - notes_list[i]['_time'] < 1.5:
-
+                if notes_list[i]['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_type'] != 3 and lastNote['_time'] - notes_list[i]['_time'] < seconds(1.5):
                     try:
                         if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and
                                 notes_list[i]['_type'] == lastNote['_type']):
@@ -591,8 +637,8 @@ class Main:
                             notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
 
                     except Exception:
-                        traceback.print_exc()
                         _print('_________________________________________________________')
+                        _print(traceback.format_exc())
                         _print(f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print('_________________________________________________________')
@@ -607,8 +653,8 @@ class Main:
                                 notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
                     except Exception:
-                        traceback.print_exc()
                         _print('_________________________________________________________')
+                        _print(traceback.format_exc())
                         _print(f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print('_________________________________________________________')
@@ -617,7 +663,7 @@ class Main:
                         if notes_list[i]['_time'] == lastNote['_time']:
 
                             if notes_list[i]['_type'] == lastNote['_type']:
-                                del notes_list[i]
+                                notes_list = notes_list.pop(i)
 
                             else:
 
@@ -625,16 +671,22 @@ class Main:
                                     if notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
 
                                         choice = int(np.random.choice([0, 1]))
-                                        notes_list[i]['_cutDirection'] = leftRightDirs[choice]
-                                        notes_list[i-1]['_cutDirection'] = oppositeCutDir[notes_list[i]['_cutDirection']]
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Dot
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Dot
 
                                     elif notes_list[i]['_lineIndex'] == line_indices.Col1:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Left
                                         notes_list[i-1]['_cutDirection'] = cut_dirs.Left
+                                        if notes_list[i]['_type'] == 0 and notes_list[i]['_lineLayer'] < lastNote['_lineLayer']:
+                                            notes_list[i-1]['_lineLayer'] = notes_list[i]['_lineLayer']
+                                            notes_list[i]['_lineLayer'] = lastNote['_lineLayer']
 
                                     elif notes_list[i]['_lineIndex'] == line_indices.Col4:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Right
                                         notes_list[i-1]['_cutDirection'] = cut_dirs.Right
+                                        if notes_list[i]['_type'] == 0 and notes_list[i]['_lineLayer'] > lastNote['_lineLayer']:
+                                            notes_list[i-1]['_lineLayer'] = notes_list[i]['_lineLayer']
+                                            notes_list[i]['_lineLayer'] = lastNote['_lineLayer']
 
                                 elif notes_list[i]['_lineLayer'] == lastNote['_lineLayer']:
 
@@ -644,50 +696,68 @@ class Main:
 
                                     elif notes_list[i]['_lineLayer'] == line_layers.Middle:
                                         choice = int(np.random.choice([0, 1]))
-                                        notes_list[i]['_cutDirection'] = upDownDirs[choice]
-                                        notes_list[i-1]['_cutDirection'] = oppositeCutDir[notes_list[i]['_cutDirection']]
+                                        notes_list[i]['_cutDirection'] = cut_dirs.Down
+                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Down
 
                                     elif notes_list[i]['_lineLayer'] == line_layers.Top:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Up
                                         notes_list[i-1]['_cutDirection'] = cut_dirs.Up
 
                     except Exception:
-                        traceback.print_exc()
                         _print('_________________________________________________________')
+                        _print(traceback.format_exc())
                         _print(f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print('_________________________________________________________')
 
+                    try:
+                        if notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
+                            notes_list[i]['_cutDirection'] = cut_dirs.Up
+
+                        elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1:
+                            notes_list[i]['_cutDirection'] = cut_dirs.UpLeft
+
+                        elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2:
+                            notes_list[i]['_cutDirection'] = cut_dirs.UpRight
+
+                        elif notes_list[i]['_lineIndex'] == line_indices.Col1:
+                            notes_list[i]['_cutDirection'] = cut_dirs.Left
+
+                        elif notes_list[i]['_lineIndex'] == line_indices.Col4:
+                            notes_list[i]['_cutDirection'] = cut_dirs.Right
+
+                    except Exception:
+                        _print('_________________________________________________________')
+                        _print(traceback.format_exc())
+                        _print(f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(json.dumps(notes_list[i], indent=4))
+                        _print('_________________________________________________________')
+
+                    try:
+                        if notes_list[i]['_type'] == 0:
+                            if (lastRedNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastRedNote['_cutDirection']]
+                                    and lastRedNote['_time'] - notes_list[i]['_time'] < seconds(1.5)):
+                                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastRedNote['_cutDirection']]))
+                            lastRedNote = notes_list[i]
+                        else:
+                            if (lastBlueNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastBlueNote['_cutDirection']]
+                                    and lastBlueNote['_time'] - notes_list[i]['_time'] < seconds(1.5)):
+                                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastBlueNote['_cutDirection']]))
+                            lastBlueNote = notes_list[i]
+
+                    except Exception:
+                        _print('_________________________________________________________')
+                        _print(traceback.format_exc())
+                        _print(f"1.5 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(json.dumps(notes_list[i], indent=4))
+                        _print('_________________________________________________________')
+
             except Exception:
-                traceback.print_exc()
                 _print('_________________________________________________________')
+                _print(traceback.format_exc())
                 _print(f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
                 _print(json.dumps(notes_list[i], indent=4))
                 _print('_________________________________________________________')
-
-            try:
-                if notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
-                    notes_list[i]['_cutDirection'] = cut_dirs.Up
-
-                elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1:
-                    notes_list[i]['_cutDirection'] = cut_dirs.UpLeft
-
-                elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2:
-                    notes_list[i]['_cutDirection'] = cut_dirs.UpRight
-
-                elif notes_list[i]['_lineIndex'] == line_indices.Col1:
-                    notes_list[i]['_cutDirection'] = cut_dirs.Left
-
-                elif notes_list[i]['_lineIndex'] == line_indices.Col4:
-                    notes_list[i]['_cutDirection'] = cut_dirs.Right
-
-            except Exception:
-                traceback.print_exc()
-                _print('_________________________________________________________')
-                _print(f"2.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                _print(json.dumps(notes_list[i], indent=4))
-                _print('_________________________________________________________')
-
             lastNote = notes_list[i]
 
         return notes_list
@@ -1176,15 +1246,16 @@ if __name__ == '__main__':
      main.tracks['beat_times'],
      main.tracks['y'],
      main.tracks['sr']) = main.get_beat_features()
-    _print(f"\t{main.song_name} | Song loaded successfully!")
+    _print(f"\t{main.song_name} | Song loaded...")
 
     # Write lists for note placement, event placement, and obstacle placement
     _print(f"\t{main.song_name} | Mapping...")
     if main.difficulty.casefold() == 'ALL'.casefold():
-        for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
+        def mapping(diff):
             main.tracks[diff.casefold()]['notes_list'] = main.run_model(diff.casefold())
             main.tracks[diff.casefold()]['events_list'] = main.events_writer(diff.casefold())
             main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(diff.casefold())
+        Parallel(n_jobs=-2, verbose=10)(delayed(mapping)(diff) for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus'])
     else:
         main.tracks[main.difficulty.casefold()]['notes_list'] = (
             main.run_model(main.difficulty.casefold()))
