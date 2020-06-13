@@ -18,6 +18,7 @@ stages:
         project: 948ea76e-bd88-4f2b-9878-62555f15fa26
         pipeline: 2
         buildVersionToDownload: latest
+        allowPartiallySucceededBuilds: true
         downloadType: specific
         itemPattern: '**/*.pkl'
         downloadPath: $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts
