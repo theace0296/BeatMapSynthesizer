@@ -19,6 +19,8 @@ import pandas as pd
 import scipy
 import sklearn.cluster
 import sklearn.utils
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.cluster import KMeans
 import soundfile as sf
 from pydub import AudioSegment
 
@@ -57,11 +59,6 @@ def parseArgs():
                         Desired model for mapping:
                         'random', 'HMM', 'segmented_HMM', 'rate_modulated_segmented_HMM'
                         """)
-    parser.add_argument('-k',
-                        type=int,
-                        help="Number of expected segments for segmented model. Default 5",
-                        default=5,
-                        required=False)
     parser.add_argument('--version',
                         type=int,
                         help="Version of HMM model to use. Default: 2",
@@ -128,7 +125,7 @@ class Notes:
 
 
 class Main:
-    def __init__(self, song_path, song_name, difficulty, model, k, version,
+    def __init__(self, song_path, song_name, difficulty, model, version,
                  environment, lightsIntensity, albumDir, outDir, zipFiles):
         self.song_path = song_path
         if song_name is None:
@@ -145,11 +142,6 @@ class Main:
 
         self.difficulty = difficulty
         self.model = model
-
-        if k is None:
-            self.k = 5
-        else:
-            self.k = k
 
         if version is None:
             self.version = 2
@@ -862,10 +854,30 @@ class Main:
         evecs = scipy.ndimage.median_filter(evecs, size=(9, 1))
         # cumulative normalization is needed for symmetric normalize laplacian eigenvectors
         Cnorm = np.cumsum(evecs**2, axis=1)**0.5
+
+        # estimate k, set = 5 by default
+        k = 5
+        mms = MinMaxScaler()
+        melspec = librosa.feature.melspectrogram(y=self.tracks['y'], sr=self.tracks['sr'])
+        mms.fit(librosa.power_to_db(melspec, ref=np.max))
+        data_transformed = mms.transform(librosa.power_to_db(melspec, ref=np.max))
+
+        Sum_of_squared_distances = []
+        K = range(1, 12)
+        for k in K:
+            km = KMeans(n_clusters=k)
+            km = km.fit(data_transformed)
+            Sum_of_squared_distances.append(km.inertia_)
+        delta_sum_of_squared_distances = np.diff(Sum_of_squared_distances)
+        avg_delta_sum_of_squared_distances = np.median(delta_sum_of_squared_distances)
+        for i in range(0, len(delta_sum_of_squared_distances)):
+            if delta_sum_of_squared_distances[i]-avg_delta_sum_of_squared_distances > 0:
+                k = i
+                break
+
         # If we want k clusters, use the first k normalized eigenvectors.
-        # Fun exercise: see how the segmentation changes as you vary k
-        X = evecs[:, :self.k] / Cnorm[:, self.k-1:self.k]
-        KM = sklearn.cluster.KMeans(n_clusters=self.k)
+        X = evecs[:, :k] / Cnorm[:, k-1:k]
+        KM = sklearn.cluster.KMeans(n_clusters=k)
         seg_ids = KM.fit_predict(X)
         bound_beats = 1 + np.flatnonzero(seg_ids[:-1] != seg_ids[1:])
         # Count beat 0 as a boundary
@@ -1144,7 +1156,6 @@ if __name__ == '__main__':
     testFile.write(f"Song name: {args.song_name}\n")
     testFile.write(f"Difficulty: {args.difficulty}\n")
     testFile.write(f"Model: {args.model}\n")
-    testFile.write(f"K: {args.k}\n")
     testFile.write(f"Version: {args.version}\n")
     testFile.write(f"Environment: {args.environment}\n")
     testFile.write(f"Lighting Intensity: {args.lightsIntensity}\n")
@@ -1159,7 +1170,6 @@ if __name__ == '__main__':
                 args.song_name,
                 args.difficulty,
                 args.model,
-                args.k,
                 args.version,
                 args.environment,
                 args.lightsIntensity,

@@ -11,7 +11,6 @@ class __beatMapArgs {
         this.dir = '';
         this.difficulty = 'all';
         this.model = 'random';
-        this.k = 5;
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
@@ -71,7 +70,6 @@ window.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('taskLog').innerHTML !== "") {
             document.getElementById('taskLog').innerHTML = "";
         }
-        args.k = parseInt(document.getElementById('numSegmentsInput').value, 10);
         args.version = parseInt(document.getElementById('datalist').value, 10);
         args.lightsIntensity = parseInt(document.getElementById('lightsIntensityInput').value, 10);
         args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;

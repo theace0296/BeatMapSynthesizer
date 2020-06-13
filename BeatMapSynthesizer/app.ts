@@ -17,7 +17,6 @@ class __beatMapArgs {
     dir: string;
     difficulty: string;
     model: string;
-    k: number;
     version: number;
     outDir: string;
     zipFiles: number;
@@ -28,7 +27,6 @@ class __beatMapArgs {
         this.dir = '';
         this.difficulty = 'all';
         this.model = 'random';
-        this.k = 5;
         this.version = 2;
         this.outDir = process.env.PORTABLE_EXECUTABLE_DIR !== null ? process.env.PORTABLE_EXECUTABLE_DIR : process.env.PATH;
         this.zipFiles = 0;
@@ -203,7 +201,6 @@ class worker {
             `"${trackname} - ${artistname}"`,
             `"${args.difficulty}"`,
             `"${args.model}"`,
-            '-k', args.k.toString(),
             '--version', args.version.toString(),
             '--environment', `"${args.environment}"`,
             '--lightsIntensity', args.lightsIntensity.toString(),
