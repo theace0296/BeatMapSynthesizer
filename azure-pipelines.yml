@@ -1,92 +1,93 @@
-# Node.js
-# Build a general Node.js project with npm.
-# Add steps that analyze code, save build artifacts, deploy, and more:
-# https://docs.microsoft.com/azure/devops/pipelines/languages/javascript
-
 variables:
 - name: version
   value: 0.0.1
-
 trigger:
-- gui
+  branches:
+    include:
+    - gui
+stages:
+- stage: __default
+  jobs:
+  - job: Job
+    pool:
+      vmImage: windows-latest
+    steps:
+    - task: DownloadBuildArtifacts@0
+      inputs:
+        buildType: specific
+        project: 948ea76e-bd88-4f2b-9878-62555f15fa26
+        pipeline: 2
+        buildVersionToDownload: latest
+        downloadType: specific
+        itemPattern: '**/*.pkl'
+        downloadPath: $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts
+      displayName: Download models
+    - task: NodeTool@0
+      inputs:
+        versionSpec: 10.x
+      displayName: Install Node.js
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: 3.8.3
+        addToPath: true
+        architecture: x64
+      displayName: Install Python
+    - task: PowerShell@2
+      inputs:
+        targetType: inline
+        failOnStderr: false
+        script: >
+          python -m pip install --upgrade pip
 
-pool:
-  vmImage: 'windows-latest'
+          python -m pip install wheel
 
-steps:
-- checkout: self
-  persistCredentials: true
-  clean: true
+          python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
 
-- task: DownloadBuildArtifacts@0
-  inputs:
-    buildType: 'specific'
-    project: '948ea76e-bd88-4f2b-9878-62555f15fa26'
-    pipeline: '2'
-    buildVersionToDownload: 'latest'
-    downloadType: 'specific'
-    itemPattern: '**/*.pkl'
-    downloadPath: '$(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts'
-  displayName: 'Download models'
+          python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
 
-- task: NodeTool@0
-  inputs:
-    versionSpec: '10.x'
-  displayName: 'Install Node.js'
+          python -m pip install https://github.com/librosa/librosa/zipball/main
 
-- task: UsePythonVersion@0
-  inputs:
-    versionSpec: '3.8.3'
-    addToPath: true
-    architecture: 'x64'
-  displayName: Install Python
+          $pyPath = python -c "import sys; print(sys.executable)"
 
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    failOnStderr: false
-    script: |
-      python -m pip install --upgrade pip
-      python -m pip install wheel
-      python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
-      python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
-      python -m pip install https://github.com/librosa/librosa/zipball/main
-      $pyPath = python -c "import sys; print(sys.executable)"
-      $pyPath = Split-Path -Path $pyPath
-      $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
-      python -Wignore $pyPath -install
-  displayName: Install packages
+          $pyPath = Split-Path -Path $pyPath
 
-- script: |
-    npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist
-  workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
-  displayName: 'Build app'
+          $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
 
-- task: PowerShell@2
-  inputs:
-    targetType: 'inline'
-    script: |
-      $package = Get-Content -Raw -Path package.json | ConvertFrom-Json
-      $parsedversion = $package.version
-      $env:VERSION = $parsedversion
-      Write-Host "##vso[task.setvariable variable=version]$parsedversion"
-      "Using version: $($env:VERSION)"
-    workingDirectory: '$(Build.SourcesDirectory)/BeatMapSynthesizer'
-  displayName: 'Parse version number to variable'
+          python -Wignore $pyPath -install
+      displayName: Install packages
+    - task: CmdLine@2
+      displayName: Build app
+      inputs:
+        script: >
+          npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist
+        workingDirectory: $(Build.SourcesDirectory)/BeatMapSynthesizer
+    - task: PowerShell@2
+      inputs:
+        targetType: inline
+        script: >
+          $package = Get-Content -Raw -Path package.json | ConvertFrom-Json
 
-- task: CopyFiles@2
-  inputs:
-    SourceFolder: '$(Build.SourcesDirectory)/BeatMapSynthesizer/dist'
-    Contents: |
-      beat-map-synthesizer-win-$(version).exe
-    TargetFolder: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
-    CleanTargetFolder: true
-    OverWrite: true
-  displayName: 'Stage app files'
+          $parsedversion = $package.version
 
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish'
-    ArtifactName: 'beat-map-synthesizer-win-$(version)'
-    publishLocation: 'Container'
-  displayName: 'Publish to build artifact'
+          $env:VERSION = $parsedversion
+
+          Write-Host "##vso[task.setvariable variable=version]$parsedversion"
+
+          "Using version: $($env:VERSION)"
+        workingDirectory: $(Build.SourcesDirectory)/BeatMapSynthesizer
+      displayName: Parse version number to variable
+    - task: CopyFiles@2
+      inputs:
+        SourceFolder: $(Build.SourcesDirectory)/BeatMapSynthesizer/dist
+        Contents: >
+          beat-map-synthesizer-win-$(version).exe
+        TargetFolder: $(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish
+        CleanTargetFolder: true
+        OverWrite: true
+      displayName: Stage app files
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: $(Build.ArtifactStagingDirectory)/BeatMapSynthesizer/publish
+        ArtifactName: beat-map-synthesizer-win-$(version)
+        publishLocation: Container
+      displayName: Publish to build artifact
