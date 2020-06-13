@@ -27,7 +27,7 @@ warnings.filterwarnings(
     "PySoundFile failed. Trying audioread instead.")
 
 
-def _print(message):
+def _print(message=None):
     if message:
         sys.stdout.write(f"{message}\n")
         sys.stdout.flush()
@@ -229,7 +229,7 @@ class Main:
                                          expert_beatmaps_df,
                                          expertplus_beatmaps_df]
         _artist = self.song_name.split(' - ')
-        _artist = _artist[len(_artist)]
+        _artist = _artist[len(_artist) - 1]
         info = {'_version': '2.0.0',
                 '_songName': f"{self.song_name}",
                 '_songSubName': '',
@@ -793,7 +793,7 @@ class Main:
 
     def hmm_notes_writer(self, difficulty):
         """Writes a list of notes based on a Hidden Markov Model walk."""
-        MC = load_hmm_model(difficulty)
+        MC = self.load_hmm_model(difficulty)
         # Set note placement rate dependent on difficulty level
         counter = 2
         beats = []
@@ -864,7 +864,6 @@ class Main:
         Cnorm = np.cumsum(evecs**2, axis=1)**0.5
         # If we want k clusters, use the first k normalized eigenvectors.
         # Fun exercise: see how the segmentation changes as you vary k
-        self.k = self.k
         X = evecs[:, :self.k] / Cnorm[:, self.k-1:self.k]
         KM = sklearn.cluster.KMeans(n_clusters=self.k)
         seg_ids = KM.fit_predict(X)
@@ -904,20 +903,22 @@ class Main:
         completed_segments = {}
         for index, row in segment_df.iterrows():
             if row['seg_no'] not in completed_segments.keys():
-                def get_preds(init_state, obj):
+                def get_preds(init_state, index):
                     pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
                     while len(pred) < row['length']:
                         pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
-                    completed_segments.update(obj)
+                    obj = {0: {row['seg_no']: {'start': 0, 'end': len(pred)}},
+                           1: {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}}}
+                    completed_segments.update(obj[index])
                     return pd.concat([preds, pd.Series(pred[0: row['length']])], axis=0, ignore_index=True)
 
                 if index == 0:
-                    preds = get_preds(False, {row['seg_no']: {'start': 0, 'end': len(pred)}})
+                    preds = get_preds(False, 0)
                 else:
                     try:
-                        preds = get_preds(True, {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        preds = get_preds(True, 1)
                     except Exception:
-                        preds = get_preds(False, {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        preds = get_preds(False, 1)
 
             else:
                 if (row['length'] <= (completed_segments[row['seg_no']]['end'] - completed_segments[row['seg_no']]['start'])):
@@ -945,7 +946,7 @@ class Main:
         """
         This function writes the list of notes based on the segmented HMM model.
         """
-        MC = load_hmm_model(difficulty)
+        MC = self.load_hmm_model(difficulty)
         (segments, beat_times, tempo) = self.laplacian_segmentation()
         segments_df = self.segments_to_data_frame(segments)
         preds = self.segment_predictions(segments_df, MC)
@@ -1105,7 +1106,7 @@ class Main:
         Function to write the notes to a list after predicting with
         the rate modulated segmented HMM model.
         """
-        MC = load_hmm_model(difficulty)
+        MC = self.load_hmm_model(difficulty)
         (segments, beat_times, tempo) = self.laplacian_segmentation()
         self.tracks[difficulty.casefold()]['modulated_beat_list'] = (
             self.amplitude_rate_modulation(difficulty))
