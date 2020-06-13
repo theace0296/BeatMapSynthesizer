@@ -28,8 +28,12 @@ warnings.filterwarnings(
 
 
 def _print(message):
-    sys.stdout.write(f"{message}\n")
-    sys.stdout.flush()
+    if message:
+        sys.stdout.write(f"{message}\n")
+        sys.stdout.flush()
+    else:
+        sys.stdout.write('_________________________________________________________\n')
+        sys.stdout.flush()
 
 
 def parseArgs():
@@ -174,73 +178,39 @@ class Main:
         if not os.path.exists(self.workingDir):
             os.makedirs(self.workingDir)
 
+        _lists = {'events_list': [],
+                  'notes_list': [],
+                  'obstacles_list': [],
+                  'modulated_beat_list': []}
+
         self.tracks = {
                     'bpm': 0,
                     'beat_times': [],
                     'y': 0,
                     'sr': 0,
-                    'easy': {
-                        'events_list': [],
-                        'notes_list': [],
-                        'obstacles_list': [],
-                        'modulated_beat_list': []
-                    },
-                    'normal': {
-                        'events_list': [],
-                        'notes_list': [],
-                        'obstacles_list': [],
-                        'modulated_beat_list': []
-                    },
-                    'hard': {
-                        'events_list': [],
-                        'notes_list': [],
-                        'obstacles_list': [],
-                        'modulated_beat_list': []
-                    },
-                    'expert': {
-                        'events_list': [],
-                        'notes_list': [],
-                        'obstacles_list': [],
-                        'modulated_beat_list': []
-                    },
-                    'expertplus': {
-                        'events_list': [],
-                        'notes_list': [],
-                        'obstacles_list': [],
-                        'modulated_beat_list': []
-                    }
-                }
+                    'easy': _lists,
+                    'normal': _lists,
+                    'hard': _lists,
+                    'expert': _lists,
+                    'expertplus': _lists}
 
     def write_info_file(self):
         """This function creates the 'info.dat' file."""
         difficulty_beatmaps_array = []
 
-        easy_beatmaps_df = {'_difficulty': 'Easy', '_difficultyRank': 1,
-                            '_beatmapFilename': "easy.dat",
-                            '_noteJumpMovementSpeed': 8,
-                            '_noteJumpStartBeatOffset': 0,
-                            '_customData': {}}
-        normal_beatmaps_df = {'_difficulty': 'Normal', '_difficultyRank': 3,
-                              '_beatmapFilename': "normal.dat",
-                              '_noteJumpMovementSpeed': 10,
-                              '_noteJumpStartBeatOffset': 0,
-                              '_customData': {}}
-        hard_beatmaps_df = {'_difficulty': 'Hard', '_difficultyRank': 5,
-                            '_beatmapFilename': "hard.dat",
-                            '_noteJumpMovementSpeed': 12,
-                            '_noteJumpStartBeatOffset': 0,
-                            '_customData': {}}
-        expert_beatmaps_df = {'_difficulty': 'Expert', '_difficultyRank': 7,
-                              '_beatmapFilename': "expert.dat",
-                              '_noteJumpMovementSpeed': 14,
-                              '_noteJumpStartBeatOffset': 0,
-                              '_customData': {}}
-        expertplus_beatmaps_df = {'_difficulty': 'ExpertPlus',
-                                  '_difficultyRank': 9,
-                                  '_beatmapFilename': "expertplus.dat",
-                                  '_noteJumpMovementSpeed': 16,
-                                  '_noteJumpStartBeatOffset': 0,
-                                  '_customData': {}}
+        def beatmap_df(diff, rank, movement_speed):
+            return {"_difficulty": diff,
+                    "_difficultyRank": rank,
+                    "_beatmapFilename": f"{diff.casefold()}.dat",
+                    "_noteJumpMovementSpeed": movement_speed,
+                    "_noteJumpStartBeatOffset": 0,
+                    "_customData": {}}
+
+        easy_beatmaps_df = beatmap_df("Easy", 1, 8)
+        normal_beatmaps_df = beatmap_df("Normal", 3, 10)
+        hard_beatmaps_df = beatmap_df("Hard", 5, 12)
+        expert_beatmaps_df = beatmap_df("Expert", 7, 14)
+        expertplus_beatmaps_df = beatmap_df("ExpertPlus", 9, 16)
 
         if self.difficulty.casefold() == 'easy'.casefold():
             difficulty_beatmaps_array = [easy_beatmaps_df]
@@ -258,11 +228,12 @@ class Main:
                                          hard_beatmaps_df,
                                          expert_beatmaps_df,
                                          expertplus_beatmaps_df]
-
+        _artist = self.song_name.split(' - ')
+        _artist = _artist[len(_artist)]
         info = {'_version': '2.0.0',
                 '_songName': f"{self.song_name}",
                 '_songSubName': '',
-                '_songAuthorName': 'BeatMapSynth',
+                '_songAuthorName': f"{_artist}",
                 '_levelAuthorName': 'BeatMapSynth',
                 '_beatsPerMinute': round(self.tracks['bpm']),
                 '_songTimeOffset': 0,
@@ -363,9 +334,9 @@ class Main:
         7 : Red Fade Out
         """
         eventValues = {'Off': 0,
-                       'Normal': [1, 5],
-                       'FadeIn': [2, 6],
-                       'FadeOut': [3, 7]}
+                       'Normal': [5, 1],
+                       'FadeIn': [6, 2],
+                       'FadeOut': [7, 3]}
 
         lastEventTime = 0
         lastEventColor = 0
@@ -415,11 +386,11 @@ class Main:
                              '_value': eventValues['Off']}
                     events_list.append(event)
             except Exception:
-                _print('_________________________________________________________')
+                _print()
                 _print(traceback.format_exc())
                 _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
-                _print('_________________________________________________________')
+                _print()
 
             # Rings
             try:
@@ -435,11 +406,11 @@ class Main:
                 events_list.append(event)
                 lastEventRing = lastEventRing + 1
             except Exception:
-                _print('_________________________________________________________')
+                _print()
                 _print(traceback.format_exc())
                 _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
-                _print('_________________________________________________________')
+                _print()
 
             # Lasers
             try:
@@ -450,11 +421,11 @@ class Main:
 
                     events_list.append(event)
             except Exception:
-                _print('_________________________________________________________')
+                _print()
                 _print(traceback.format_exc())
                 _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
-                _print('_________________________________________________________')
+                _print()
 
         return events_list
 
@@ -623,24 +594,22 @@ class Main:
                         line_indices.Col4: [cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft]}
 
         lastNote = notes_list[0]
-        lastRedNote = list(filter(lambda x: x['_type'] == 0, notes_list))[0]
-        lastBlueNote = list(filter(lambda x: x['_type'] == 1, notes_list))[0]
 
         for i in range(1, len(notes_list)):
             try:
                 if notes_list[i]['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_type'] != 3 and lastNote['_time'] - notes_list[i]['_time'] < seconds(1.5):
                     try:
-                        if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastNote['_cutDirection']] and
+                        if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] != oppositeCutDir[lastNote['_cutDirection']] and
                                 notes_list[i]['_type'] == lastNote['_type']):
 
-                            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastNote['_cutDirection']]))
+                            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDir[lastNote['_cutDirection']]))
 
                     except Exception:
-                        _print('_________________________________________________________')
+                        _print()
                         _print(traceback.format_exc())
                         _print(f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
-                        _print('_________________________________________________________')
+                        _print()
                     try:
                         if (notes_list[i]['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and
                                 notes_list[i]['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and
@@ -652,11 +621,11 @@ class Main:
                                 notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
                     except Exception:
-                        _print('_________________________________________________________')
+                        _print()
                         _print(traceback.format_exc())
                         _print(f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
-                        _print('_________________________________________________________')
+                        _print()
 
                     try:
                         if notes_list[i]['_time'] == lastNote['_time']:
@@ -668,8 +637,6 @@ class Main:
 
                                 if notes_list[i]['_lineIndex'] == lastNote['_lineIndex']:
                                     if notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
-
-                                        choice = int(np.random.choice([0, 1]))
                                         notes_list[i]['_cutDirection'] = cut_dirs.Dot
                                         notes_list[i-1]['_cutDirection'] = cut_dirs.Dot
 
@@ -703,65 +670,52 @@ class Main:
                                         notes_list[i-1]['_cutDirection'] = cut_dirs.Up
 
                     except Exception:
-                        _print('_________________________________________________________')
+                        _print()
                         _print(traceback.format_exc())
                         _print(f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
-                        _print('_________________________________________________________')
+                        _print()
 
                     try:
-                        if notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
+                        if (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]
+                                and lastNote['_cutDIrection'] != cut_dirs.Up):
                             notes_list[i]['_cutDirection'] = cut_dirs.Up
 
-                        elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1:
+                        elif (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1
+                                and lastNote['_cutDIrection'] != cut_dirs.UpLeft):
                             notes_list[i]['_cutDirection'] = cut_dirs.UpLeft
 
-                        elif notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2:
+                        elif (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2
+                                and lastNote['_cutDIrection'] != cut_dirs.UpRight):
                             notes_list[i]['_cutDirection'] = cut_dirs.UpRight
 
-                        elif notes_list[i]['_lineIndex'] == line_indices.Col1:
+                        elif (notes_list[i]['_lineIndex'] == line_indices.Col1
+                                and lastNote['_cutDIrection'] != cut_dirs.Left):
                             notes_list[i]['_cutDirection'] = cut_dirs.Left
 
-                        elif notes_list[i]['_lineIndex'] == line_indices.Col4:
+                        elif (notes_list[i]['_lineIndex'] == line_indices.Col4
+                                and lastNote['_cutDIrection'] != cut_dirs.Right):
                             notes_list[i]['_cutDirection'] = cut_dirs.Right
 
                     except Exception:
-                        _print('_________________________________________________________')
+                        _print()
                         _print(traceback.format_exc())
                         _print(f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
-                        _print('_________________________________________________________')
-
-                    try:
-                        if notes_list[i]['_type'] == 0:
-                            if (lastRedNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastRedNote['_cutDirection']]
-                                    and lastRedNote['_time'] - notes_list[i]['_time'] < seconds(1.5)):
-                                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastRedNote['_cutDirection']]))
-                            lastRedNote = notes_list[i]
-                        else:
-                            if (lastBlueNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] not in oppositeCutDirs[lastBlueNote['_cutDirection']]
-                                    and lastBlueNote['_time'] - notes_list[i]['_time'] < seconds(1.5)):
-                                notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDirs[lastBlueNote['_cutDirection']]))
-                            lastBlueNote = notes_list[i]
-
-                    except Exception:
-                        _print('_________________________________________________________')
-                        _print(traceback.format_exc())
-                        _print(f"1.5 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                        _print(json.dumps(notes_list[i], indent=4))
-                        _print('_________________________________________________________')
+                        _print()
 
             except Exception:
-                _print('_________________________________________________________')
+                _print()
                 _print(traceback.format_exc())
                 _print(f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
                 _print(json.dumps(notes_list[i], indent=4))
-                _print('_________________________________________________________')
+                _print()
             lastNote = notes_list[i]
 
         return notes_list
 
-    def write_notes_hmm(self, notes_list, df_preds):
+    def write_notes_hmm(self, df_preds):
+        notes_list = []
         for index, row in df_preds.iterrows():
             for x in list(filter(lambda y: y.startswith('notes_type'), df_preds.columns)):
                 if row[x] != '999':
@@ -831,12 +785,15 @@ class Main:
         df = pd.DataFrame(sequence, columns=constant)
         return df
 
-    def hmm_notes_writer(self, difficulty):
-        """Writes a list of notes based on a Hidden Markov Model walk."""
+    def load_hmm_model(self, difficulty):
         # Load model
         with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
             MC = pickle.load(m)
+            return MC
 
+    def hmm_notes_writer(self, difficulty):
+        """Writes a list of notes based on a Hidden Markov Model walk."""
+        MC = load_hmm_model(difficulty)
         # Set note placement rate dependent on difficulty level
         counter = 2
         beats = []
@@ -859,10 +816,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns=['_time']), df_walk], axis=1, sort=True)
         df_preds.dropna(axis=0, inplace=True)
         # Write notes dictionaries
-        notes_list = []
-        notes_list = self.write_notes_hmm(notes_list, df_preds)
-
-        return notes_list
+        return self.write_notes_hmm(df_preds)
 
     # Segmented HMM Note Writing Functions
     def laplacian_segmentation(self):
@@ -950,48 +904,38 @@ class Main:
         completed_segments = {}
         for index, row in segment_df.iterrows():
             if row['seg_no'] not in completed_segments.keys():
-                if index == 0:
-                    pred = HMM_model.walk()
+                def get_preds(init_state, obj):
+                    pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
                     while len(pred) < row['length']:
-                        pred = HMM_model.walk()
-                    completed_segments.update({row['seg_no']: {'start': 0, 'end': len(pred)}})
-                    preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis=0, ignore_index=True)
+                        pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
+                    completed_segments.update(obj)
+                    return pd.concat([preds, pd.Series(pred[0: row['length']])], axis=0, ignore_index=True)
+
+                if index == 0:
+                    preds = get_preds(False, {row['seg_no']: {'start': 0, 'end': len(pred)}})
                 else:
                     try:
-                        pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0]))
-                        while len(pred) < row['length']:
-                            pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0]))
-                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                        preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis=0, ignore_index=True)
+                        preds = get_preds(True, {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
                     except Exception:
-                        pred = HMM_model.walk()
-                        while len(pred) < row['length']:
-                            pred = HMM_model.walk()
-                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                        preds = pd.concat([preds, pd.Series(pred[0: row['length']])], axis=0, ignore_index=True)
+                        preds = get_preds(False, {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
 
             else:
-                if (row['length'] <=
-                        (completed_segments[row['seg_no']]['end'] -
-                         completed_segments[row['seg_no']]['start'])):
-
+                if (row['length'] <= (completed_segments[row['seg_no']]['end'] - completed_segments[row['seg_no']]['start'])):
                     pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['start'] + row['length'], 0]
                     preds = pd.concat([preds, pred], axis=0, ignore_index=True)
                 else:
+                    def get_preds(extend, preds):
+                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
+                        diff = row['length'] - len(pred)
+                        pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis=0, ignore_index=True)
+                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        return pd.concat([preds, pred], axis=0, ignore_index=True)
                     try:
                         extend = HMM_model.walk(init_state=tuple(preds.iloc[completed_segments[row['seg_no']]['end'] - 5: completed_segments[row['seg_no']]['end'], 0]))
-                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
-                        diff = row['length'] - len(pred)
-                        pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis=0, ignore_index=True)
-                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                        preds = pd.concat([preds, pred], axis=0, ignore_index=True)
+                        preds = get_preds(extend, preds)
                     except Exception:
                         extend = HMM_model.walk()
-                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
-                        diff = row['length'] - len(pred)
-                        pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis=0, ignore_index=True)
-                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
-                        preds = pd.concat([preds, pred], axis=0, ignore_index=True)
+                        preds = get_preds(extend, preds)
 
         preds_list = list(preds.iloc[:, 0])
         preds = self.walk_to_data_frame(preds_list)
@@ -1001,10 +945,7 @@ class Main:
         """
         This function writes the list of notes based on the segmented HMM model.
         """
-        # Load model:
-        with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
-            MC = pickle.load(m)
-
+        MC = load_hmm_model(difficulty)
         (segments, beat_times, tempo) = self.laplacian_segmentation()
         segments_df = self.segments_to_data_frame(segments)
         preds = self.segment_predictions(segments_df, MC)
@@ -1013,10 +954,7 @@ class Main:
         df_preds = pd.concat([pd.DataFrame(beats, columns=['_time']), preds], axis=1, sort=True)
         df_preds.dropna(axis=0, inplace=True)
         # Write notes dictionaries
-        notes_list = []
-        notes_list = self.write_notes_hmm(notes_list, df_preds)
-
-        return notes_list
+        return self.write_notes_hmm(df_preds)
 
     # Rate Modulated Segmented HMM Note Writing Functions
     def choose_rate(self, decibel, difficulty):
@@ -1030,61 +968,57 @@ class Main:
         """
         decibel = np.abs(decibel)
         p = None
-        if difficulty.casefold() == 'easy'.casefold():
+
+        def get_rate_level_from_decibel(decibel):
             if decibel > 70:
-                p = [0.95, 0.05, 0, 0, 0, 0]
+                return 4
             elif decibel <= 70 and decibel > 55:
-                p = [0.90, 0.10, 0, 0, 0, 0]
+                return 3
             elif decibel <= 55 and decibel > 45:
-                p = [0.80, 0.2, 0, 0, 0, 0]
+                return 2
             elif decibel <= 45 and decibel > 35:
-                p = [0.4, 0.5, 0.1, 0, 0, 0]
+                return 1
             else:
-                p = [0.3, 0.6, 0.1, 0, 0, 0]
-        elif difficulty.casefold() == 'normal'.casefold():
-            if decibel > 70:
-                p = [0.95, 0.05, 0, 0, 0, 0]
-            elif decibel <= 70 and decibel > 55:
-                p = [0.5, 0.5, 0, 0, 0, 0]
-            elif decibel <= 55 and decibel > 45:
-                p = [0.3, 0.7, 0, 0, 0, 0]
-            elif decibel <= 45 and decibel > 35:
-                p = [0.2, 0.7, 0.1, 0, 0, 0]
-            else:
-                p = [0.05, 0.7, 0.25, 0, 0, 0]
-        elif difficulty.casefold() == 'hard'.casefold():
-            if decibel > 70:
-                p = [0.95, 0.05, 0, 0, 0, 0]
-            elif decibel <= 70 and decibel > 55:
-                p = [0.5, 0.5, 0, 0, 0, 0]
-            elif decibel <= 55 and decibel > 45:
-                p = [0.2, 0.6, 0.2, 0, 0, 0]
-            elif decibel <= 45 and decibel > 35:
-                p = [0.1, 0.5, 0.4, 0, 0, 0]
-            else:
-                p = [0.05, 0.35, 0.6, 0, 0, 0]
-        elif difficulty.casefold() == 'expert'.casefold():
-            if decibel > 70:
-                p = [0.8, 0.2, 0, 0, 0, 0]
-            elif decibel <= 70 and decibel > 55:
-                p = [0.2, 0.7, 0.1, 0, 0, 0]
-            elif decibel <= 55 and decibel > 50:
-                p = [0.1, 0.4, 0.3, 0.2, 0, 0]
-            elif decibel <= 50 and decibel > 45:
-                p = [0, 0.05, 0.6, 0.35, 0, 0]
-            else:
-                p = [0, 0, 0.35, 0.65, 0, 0]
-        elif difficulty.casefold() == 'expertplus'.casefold():
-            if decibel > 70:
-                p = [0, 0.5, 0.4, 0.1, 0, 0]
-            elif decibel <= 70 and decibel > 55:
-                p = [0, 0.3, 0.6, 0.1, 0, 0]
-            elif decibel <= 55 and decibel > 50:
-                p = [0, 0.1, 0.6, 0.3, 0, 0]
-            elif decibel <= 50 and decibel > 45:
-                p = [0, 0.05, 0.1, 0.6, 0.25, 0]
-            else:
-                p = [0, 0, 0, 0.5, 0.3, 0.2]
+                return 0
+
+        easy_probabilities = {0: [0.3, 0.6, 0.1, 0, 0, 0],
+                              1: [0.4, 0.5, 0.1, 0, 0, 0],
+                              2: [0.80, 0.2, 0, 0, 0, 0],
+                              3: [0.90, 0.10, 0, 0, 0, 0],
+                              4: [0.95, 0.05, 0, 0, 0, 0]}
+
+        normal_probabilities = {0: [0.05, 0.7, 0.25, 0, 0, 0],
+                                1: [0.2, 0.7, 0.1, 0, 0, 0],
+                                2: [0.3, 0.7, 0, 0, 0, 0],
+                                3: [0.5, 0.5, 0, 0, 0, 0],
+                                4: [0.95, 0.05, 0, 0, 0, 0]}
+
+        hard_probabilities = {0: [0.05, 0.35, 0.6, 0, 0, 0],
+                              1: [0.1, 0.5, 0.4, 0, 0, 0],
+                              2: [0.2, 0.6, 0.2, 0, 0, 0],
+                              3: [0.5, 0.5, 0, 0, 0, 0],
+                              4: [0.95, 0.05, 0, 0, 0, 0]}
+
+        expert_probabilities = {0: [0.8, 0.2, 0, 0, 0, 0],
+                                1: [0.2, 0.7, 0.1, 0, 0, 0],
+                                2: [0.1, 0.4, 0.3, 0.2, 0, 0],
+                                3: [0, 0.05, 0.6, 0.35, 0, 0],
+                                4: [0, 0, 0.35, 0.65, 0, 0]}
+
+        expertPlus_probabilities = {0: [0, 0, 0, 0.5, 0.3, 0.2],
+                                    1: [0, 0.05, 0.1, 0.6, 0.25, 0],
+                                    2: [0, 0.1, 0.6, 0.3, 0, 0],
+                                    3: [0, 0.3, 0.6, 0.1, 0, 0],
+                                    4: [0, 0.5, 0.4, 0.1, 0, 0]}
+
+        difficulty_probabilities = {'easy':       easy_probabilities,
+                                    'normal':     normal_probabilities,
+                                    'hard':       hard_probabilities,
+                                    'expert':     expert_probabilities,
+                                    'expertplus': expertPlus_probabilities}
+
+        p = difficulty_probabilities[difficulty.casefold()][get_rate_level_from_decibel(decibel)]
+
         return np.random.choice([0, 1, 2, 4, 8, 16], p=p)
 
     def amplitude_rate_modulation(self, difficulty):
@@ -1171,10 +1105,7 @@ class Main:
         Function to write the notes to a list after predicting with
         the rate modulated segmented HMM model.
         """
-        # Load model:
-        with open(f"./models/HMM_{difficulty}_v{self.version}.pkl", 'rb') as m:
-            MC = pickle.load(m)
-
+        MC = load_hmm_model(difficulty)
         (segments, beat_times, tempo) = self.laplacian_segmentation()
         self.tracks[difficulty.casefold()]['modulated_beat_list'] = (
             self.amplitude_rate_modulation(difficulty))
@@ -1198,10 +1129,7 @@ class Main:
         df_preds = pd.concat([merged_beats, preds], axis=1, sort=True)
         df_preds.dropna(axis=0, inplace=True)
         # Write notes dictionaries
-        notes_list = []
-        notes_list = self.write_notes_hmm(notes_list, df_preds)
-
-        return notes_list
+        return self.write_notes_hmm(df_preds)
 
 
 if __name__ == '__main__':
@@ -1239,7 +1167,9 @@ if __name__ == '__main__':
                 args.zipFiles)
 
     # Load song and get beat features
+    _print
     _print(f"{main.song_name}")
+    _print
     _print(f"\t{main.song_name} | Loading Song...")
     (main.tracks['bpm'],
      main.tracks['beat_times'],
@@ -1279,4 +1209,6 @@ if __name__ == '__main__':
     else:
         finishMessage += f"folder in {main.outDir}, "
     finishMessage += "place in the 'CustomMusic' folder in Beat Saber's files."
+    _print()
     _print(finishMessage)
+    _print()
