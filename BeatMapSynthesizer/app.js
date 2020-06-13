@@ -98,7 +98,8 @@ class worker {
                     let files = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
                         "models/HMM_easy_v1.pkl", "models/HMM_normal_v1.pkl", "models/HMM_hard_v1.pkl", "models/HMM_expert_v1.pkl", "models/HMM_expertPlus_v1.pkl",
                         "models/HMM_easy_v2.pkl", "models/HMM_normal_v2.pkl", "models/HMM_hard_v2.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus_v2.pkl",
-                        "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl"];
+                        "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl",
+                        "models/HMM_easy_v4.pkl", "models/HMM_normal_v4.pkl", "models/HMM_hard_v4.pkl", "models/HMM_expert_v4.pkl", "models/HMM_expertPlus_v4.pkl"];
                     for (let file of files) {
                         fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
                     }
