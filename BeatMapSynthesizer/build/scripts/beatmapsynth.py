@@ -869,9 +869,12 @@ class Main:
             km = km.fit(data_transformed)
             Sum_of_squared_distances.append(km.inertia_)
         delta_sum_of_squared_distances = np.diff(Sum_of_squared_distances)
-        avg_delta_sum_of_squared_distances = np.median(delta_sum_of_squared_distances)
+
+        def f_delta(x):
+            return Sum_of_squared_distances[x] - delta_sum_of_squared_distances[x]
+
         for i in range(0, len(delta_sum_of_squared_distances)):
-            if delta_sum_of_squared_distances[i]-avg_delta_sum_of_squared_distances > 0:
+            if (f_delta(i-1) - f_delta(i)) < (f_delta(i) - f_delta(i+1)):
                 k = i
                 break
 
