@@ -862,16 +862,16 @@ class Main:
         mms.fit(librosa.power_to_db(melspec, ref=np.max))
         data_transformed = mms.transform(librosa.power_to_db(melspec, ref=np.max))
 
-        Sum_of_squared_distances = []
+        sum_of_squared_distances = []
         K = range(1, 12)
         for k in K:
             km = KMeans(n_clusters=k)
             km = km.fit(data_transformed)
-            Sum_of_squared_distances.append(km.inertia_)
-        delta_sum_of_squared_distances = np.diff(Sum_of_squared_distances)
+            sum_of_squared_distances.append(km.inertia_)
+        delta_sum_of_squared_distances = np.diff(sum_of_squared_distances)
 
         def f_delta(x):
-            return Sum_of_squared_distances[x] - delta_sum_of_squared_distances[x]
+            return sum_of_squared_distances[x] - delta_sum_of_squared_distances[x]
 
         for i in range(0, len(delta_sum_of_squared_distances)):
             if (f_delta(i-1) - f_delta(i)) < (f_delta(i) - f_delta(i+1)):
