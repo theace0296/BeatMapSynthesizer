@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 // All of the Node.js APIs are available in the preload process.
 // It has the same sandbox as a Chrome extension.
 const electron_1 = require("electron");
+const util_1 = require("util");
 /**
  * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
  */
@@ -16,6 +17,8 @@ class __beatMapArgs {
         this.zipFiles = 0;
         this.environment = 'RANDOM';
         this.lightsIntensity = 9;
+        this.albumDir = "NONE";
+        this.debug = 0;
     }
 }
 let args = new __beatMapArgs();
@@ -28,6 +31,25 @@ let operationType = /** @class */ (() => {
     return operationType;
 })();
 var currentOperationType = operationType.files;
+function parseFileList() {
+    selectedDirs.length = 0;
+    const fileListElement = document.getElementById("filelist");
+    let matches = fileListElement.value.match(/^(\b|")(.+)(\b|")$/gm);
+    if (!util_1.isNullOrUndefined(matches)) {
+        for (let match of matches) {
+            // Remove any quotation marks
+            let normalizedMatch = match.replace(/"/g, "");
+            // Append filename to varaible
+            selectedDirs.push(normalizedMatch);
+            // Create the list item:
+            let item = document.createElement('li');
+            // Set its contents:
+            item.appendChild(document.createTextNode(normalizedMatch));
+            // Add it to the list:
+            document.getElementById('dirsfilesList').appendChild(item);
+        }
+    }
+}
 window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('selectFilesButton').addEventListener('click', () => {
         if (document.getElementById('dirsfilesList').innerHTML !== "") {
@@ -43,6 +65,15 @@ window.addEventListener('DOMContentLoaded', () => {
         currentOperationType = operationType.directory;
         electron_1.ipcRenderer.send('__selectDirectory__');
     });
+    document.getElementById('selectFileListButton').addEventListener('click', () => {
+        if (document.getElementById('dirsfilesList').innerHTML !== "") {
+            document.getElementById('dirsfilesList').innerHTML = "";
+        }
+        currentOperationType = operationType.directory;
+        document.getElementById('filelist').classList.remove('hidden');
+        parseFileList();
+    });
+    document.getElementById("filelist").addEventListener('change', parseFileList);
     document.getElementById('chooseOutputDirButton').addEventListener('click', () => {
         if (document.getElementById('outputDirList').innerHTML !== "") {
             document.getElementById('outputDirList').innerHTML = "";
@@ -58,21 +89,18 @@ window.addEventListener('DOMContentLoaded', () => {
             document.getElementById('dataSource').classList.remove('hidden');
         else
             document.getElementById('dataSource').classList.add('hidden');
-        if (args.model.includes('segmented'))
-            document.getElementById('numSegments').classList.remove('hidden');
-        else
-            document.getElementById('numSegments').classList.add('hidden');
     });
     document.getElementById('environmentlist').addEventListener('change', () => {
         args.environment = document.getElementById('environmentlist').value.toString();
     });
     document.getElementById('generateBeatMapButton').addEventListener('click', () => {
-        if (document.getElementById('taskLog').innerHTML !== "") {
-            document.getElementById('taskLog').innerHTML = "";
+        if (document.getElementById('taskLogDiv').innerHTML !== "") {
+            document.getElementById('taskLogDiv').innerHTML = "";
         }
         args.version = parseInt(document.getElementById('datalist').value, 10);
         args.lightsIntensity = parseInt(document.getElementById('lightsIntensityInput').value, 10);
         args.zipFiles = document.getElementById('zipFilesLabel').classList.contains('checked') ? 1 : 0;
+        args.debug = document.getElementById('debugInfoLabel').classList.contains('checked') ? 1 : 0;
         electron_1.ipcRenderer.send('__generateBeatMap__', currentOperationType, selectedDirs, args);
     });
     document.getElementById('cancelButton').addEventListener('click', () => {
@@ -100,7 +128,20 @@ electron_1.ipcRenderer.on('task-progress', (_event, value, maxValue) => {
         document.getElementById('taskProgressBar').setAttribute('style', `width: ${(value / maxValue) * 100}%;`);
     }
 });
-electron_1.ipcRenderer.on('task-log-append-message', (_event, message) => document.getElementById('taskLog').appendChild(document.createTextNode(message + '\n')));
+electron_1.ipcRenderer.on('task-log-append-message', (_event, message, group) => {
+    let id = `taskLog_${group}`;
+    if (util_1.isNullOrUndefined(document.getElementById(id))) {
+        let element = document.createElement('pre');
+        element.classList.add("prettyprint");
+        element.classList.add("mvl");
+        element.id = id;
+        element.appendChild(document.createTextNode(message + '\n'));
+        document.getElementById('taskLogDiv').appendChild(element);
+    }
+    else {
+        document.getElementById(id).appendChild(document.createTextNode(message + '\n'));
+    }
+});
 electron_1.ipcRenderer.on('selectFilesDirs-finished', (_event, param) => {
     selectedDirs.length = 0;
     for (let value of param) {

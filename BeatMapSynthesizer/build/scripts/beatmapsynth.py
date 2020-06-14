@@ -20,13 +20,14 @@ import scipy
 import sklearn.cluster
 import sklearn.utils
 from sklearn.preprocessing import MinMaxScaler
-from sklearn.cluster import KMeans
 import soundfile as sf
 from pydub import AudioSegment
 
 warnings.filterwarnings(
     'ignore',
     "PySoundFile failed. Trying audioread instead.")
+
+isDebug = False
 
 
 def _print(message=None):
@@ -36,6 +37,11 @@ def _print(message=None):
     else:
         sys.stdout.write('_________________________________________________________\n')
         sys.stdout.flush()
+
+
+def _print_debug(message=None):
+    if isDebug:
+        _print(message)
 
 
 def parseArgs():
@@ -92,6 +98,11 @@ def parseArgs():
     parser.add_argument('--zipFiles',
                         type=int,
                         help="Boolean to zip output files.",
+                        default=0,
+                        required=False)
+    parser.add_argument('--debug',
+                        type=int,
+                        help="Boolean to print debug information.",
                         default=0,
                         required=False)
     return parser.parse_args()
@@ -593,8 +604,7 @@ class Main:
                     try:
                         if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] != oppositeCutDir[lastNote['_cutDirection']] and
                                 notes_list[i]['_type'] == lastNote['_type']):
-
-                            notes_list[i]['_cutDirection'] = int(np.random.choice(oppositeCutDir[lastNote['_cutDirection']]))
+                            notes_list[i]['_cutDirection'] = int(oppositeCutDir[lastNote['_cutDirection']])
 
                     except Exception:
                         _print()
@@ -670,23 +680,23 @@ class Main:
 
                     try:
                         if (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]
-                                and lastNote['_cutDIrection'] != cut_dirs.Up):
+                                and lastNote['_cutDirection'] != cut_dirs.Up):
                             notes_list[i]['_cutDirection'] = cut_dirs.Up
 
                         elif (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col1
-                                and lastNote['_cutDIrection'] != cut_dirs.UpLeft):
+                                and lastNote['_cutDirection'] != cut_dirs.UpLeft):
                             notes_list[i]['_cutDirection'] = cut_dirs.UpLeft
 
                         elif (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] == line_indices.Col2
-                                and lastNote['_cutDIrection'] != cut_dirs.UpRight):
+                                and lastNote['_cutDirection'] != cut_dirs.UpRight):
                             notes_list[i]['_cutDirection'] = cut_dirs.UpRight
 
                         elif (notes_list[i]['_lineIndex'] == line_indices.Col1
-                                and lastNote['_cutDIrection'] != cut_dirs.Left):
+                                and lastNote['_cutDirection'] != cut_dirs.Left):
                             notes_list[i]['_cutDirection'] = cut_dirs.Left
 
                         elif (notes_list[i]['_lineIndex'] == line_indices.Col4
-                                and lastNote['_cutDIrection'] != cut_dirs.Right):
+                                and lastNote['_cutDirection'] != cut_dirs.Right):
                             notes_list[i]['_cutDirection'] = cut_dirs.Right
 
                     except Exception:
@@ -856,31 +866,43 @@ class Main:
         Cnorm = np.cumsum(evecs**2, axis=1)**0.5
 
         # estimate k, set = 5 by default
-        k = 5
-        mms = MinMaxScaler()
-        melspec = librosa.feature.melspectrogram(y=self.tracks['y'], sr=self.tracks['sr'])
-        mms.fit(librosa.power_to_db(melspec, ref=np.max))
-        data_transformed = mms.transform(librosa.power_to_db(melspec, ref=np.max))
+        k_estimate = 5
 
-        sum_of_squared_distances = []
-        K = range(1, 12)
-        for k in K:
-            km = KMeans(n_clusters=k)
-            km = km.fit(data_transformed)
-            sum_of_squared_distances.append(km.inertia_)
-        delta_sum_of_squared_distances = np.diff(sum_of_squared_distances)
+        def estimate_segments():
+            mms = MinMaxScaler()
+            melspec = librosa.feature.melspectrogram(y=self.tracks['y'], sr=self.tracks['sr'])
+            mms.fit(librosa.power_to_db(melspec, ref=np.max))
+            data_transformed = mms.transform(librosa.power_to_db(melspec, ref=np.max))
 
-        def f_delta(x):
-            return sum_of_squared_distances[x] - delta_sum_of_squared_distances[x]
+            sum_of_squared_distances = []
+            K = range(1, 12)
+            for k in K:
+                km = sklearn.cluster.KMeans(n_clusters=k)
+                km = km.fit(data_transformed)
+                sum_of_squared_distances.append(km.inertia_)
+            delta_sum_of_squared_distances = np.diff(sum_of_squared_distances)
 
-        for i in range(0, len(delta_sum_of_squared_distances)):
-            if (f_delta(i-1) - f_delta(i)) < (f_delta(i) - f_delta(i+1)):
-                k = i
-                break
+            def f_delta(x):
+                return sum_of_squared_distances[x] - delta_sum_of_squared_distances[x]
+            try:
+                for i in range(1, len(delta_sum_of_squared_distances) - 1):
+                    if (f_delta(i-1) - f_delta(i)) < (f_delta(i) - f_delta(i+1)):
+                        return i
+                        break
+            except Exception:
+                _print()
+                _print(traceback.format_exc())
+                _print(f"Segmentation estimation error in song: {self.song_name}")
+                _print()
+                return 5
+
+        k_estimate = estimate_segments()
+        if k_estimate is None or k_estimate < 2 or k_estimate > 9:
+            k_estimate = 5
 
         # If we want k clusters, use the first k normalized eigenvectors.
-        X = evecs[:, :k] / Cnorm[:, k-1:k]
-        KM = sklearn.cluster.KMeans(n_clusters=k)
+        X = evecs[:, :k_estimate] / Cnorm[:, k_estimate-1:k_estimate]
+        KM = sklearn.cluster.KMeans(n_clusters=k_estimate)
         seg_ids = KM.fit_predict(X)
         bound_beats = 1 + np.flatnonzero(seg_ids[:-1] != seg_ids[1:])
         # Count beat 0 as a boundary

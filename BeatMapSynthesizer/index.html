@@ -21,11 +21,20 @@
         <h3 class="demo-panel-title">Select a music file...</h3>
         <div class="row">
             <br />
-            <div class="col-lg-6">
+            <div class="col-lg-4">
                 <button id="selectFilesButton" class="btn btn-block btn-lg btn-primary">Select file(s)</button>
             </div>
-            <div class="col-lg-6">
+            <div class="col-lg-4">
                 <button id="selectDirectoryButton" class="btn btn-block btn-lg btn-primary">Select folder(s)</button>
+            </div>
+            <div class="col-lg-4">
+                <button id="selectFileListButton" class="btn btn-block btn-lg btn-primary">Provide a list of folders</button>
+            </div>
+        </div>
+        <div class="row">
+            <br />
+            <div class="col-lg-12 form-group">
+                <textarea id="filelist" class="hidden form-control prettyprint mvl" rows="10" style="resize: none;"></textarea>
             </div>
         </div>
         <div class="row">
@@ -60,7 +69,6 @@
                 </optgroup>
             </select>
             <div id="dataSource" class="hidden">
-                <br />
                 <br />
                 <p>Select the data source for the model (default is '> 70% ratings')...</p>
                 <select id="datalist" name="datalist" value="Data Source" class="btn btn-block btn-default btn-primary dropdown-toggle">
@@ -123,6 +131,10 @@
                     <input type="checkbox" value="" id="zipFilesCheckbox" data-toggle="checkbox">
                     Zip files after creating output?
                 </label>
+                <label class="checkbox" for="debugInfoCheckbox" id="debugInfoLabel">
+                    <input type="checkbox" value="" id="debugInfoCheckbox" data-toggle="checkbox">
+                    Enable debug messages?
+                </label>
             </div>
             <div class="col-lg-6">
                 <button id="cancelButton" class="btn btn-block btn-lg btn-danger">Cancel</button>
@@ -133,7 +145,9 @@
             <div class="progress" style="height: 20px;">
                 <div id="taskProgressBar" class="progress-bar" style="width: 0%;"></div>
             </div>
-            <pre id="taskLog" class="prettyprint mvl"></pre>
+            <div id="taskLogDiv">
+                <pre id="taskLog_MAIN" class="prettyprint mvl"></pre>
+            </div>
         </div>
     </div>
     <!-- Renderer process -->
