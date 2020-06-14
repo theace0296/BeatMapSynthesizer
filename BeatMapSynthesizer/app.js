@@ -273,7 +273,12 @@ class worker {
                     if (fsx.existsSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`)))
                         fsx.rmdirSync(path.join(this.tempDir.normalize().normalize(), `${trackname} - ${artistname}`));
                     --this.shellsRunning;
-                    _appendMessageTaskLog(`${trackname} - ${artistname} | Finished with exit code: ${code}`, `${trackname}${artistname}`.replace(/[^\w\d]/gi, "").toLowerCase().toString());
+                    if (code === 0) {
+                        _appendMessageTaskLog(`${trackname} - ${artistname} | Finished successfully!`, `${trackname}${artistname}`.replace(/[^\w\d]/gi, "").toLowerCase().toString());
+                    }
+                    else {
+                        _appendMessageTaskLog(`${trackname} - ${artistname} | Failed with exit code: ${code}`, `${trackname}${artistname}`.replace(/[^\w\d]/gi, "").toLowerCase().toString());
+                    }
                     resolve(true);
                 });
                 shell.stdout.setEncoding('utf8');

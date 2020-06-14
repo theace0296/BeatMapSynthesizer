@@ -134,6 +134,10 @@ class Notes:
         Top = 2
     line_layers = Rows()
 
+    validCutDirs = [cut_dirs.Up, cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight, cut_dirs.Down, cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft, cut_dirs.Dot]
+    validColumns = [line_indices.Col1, line_indices.Col2, line_indices.Col3, line_indices.Col4]
+    validRows = [line_layers.Bottom, line_layers.Middle, line_layers.Top]
+
 
 class Main:
     def __init__(self, song_path, song_name, difficulty, model, version,
@@ -509,6 +513,10 @@ class Main:
 
     def remove_bad_notes(self, notes_list):
         """Remove notes that come too early in the song"""
+        cut_dirs = Notes().cut_dirs
+        line_indices = Notes().line_indices
+        line_layers = Notes().line_layers
+
         # Using the BPM we can covert from beats to seconds
         def seconds(number):
             return round(self.tracks['bpm'] / 60) * number
@@ -520,44 +528,63 @@ class Main:
                 number //= 10
             return number
 
-        temp_notes_list = []
-        index = 0
-        current_note = notes_list[index]
-        while current_note:
-            try:
-                if current_note['_lineIndex'] > 3:
-                    current_note['_lineIndex'] = remove_zeros(current_note['_lineIndex'])
-                elif current_note['_lineIndex'] < 0:
-                    index += 1
-                    current_note = notes_list[index]
-                    continue
-                if current_note['_lineLayer'] > 2:
-                    current_note['_lineLayer'] = remove_zeros(current_note['_lineLayer'])
-                elif current_note['_lineLayer'] < 0:
-                    index += 1
-                    current_note = notes_list[index]
-                    continue
-                if current_note['_cutDirection'] > 8:
-                    current_note['_cutDirection'] = remove_zeros(current_note['_cutDirection'])
-                elif current_note['_cutDirection'] < 0:
-                    index += 1
-                    current_note = notes_list[index]
-                    continue
-                temp_notes_list.append(current_note)
-                index += 1
-                current_note = notes_list[index]
-            except KeyError:
-                index += 1
-                current_note = notes_list[index]
-                continue
-            except IndexError:
-                current_note = None
+        def makeLineIndexValid(note):
+            if note['_lineIndex'] > line_indices.Col4:
+                note['_lineIndex'] = remove_zeros(note['_lineIndex'])
+            if note['_lineIndex'] in Notes().validColumns:
+                return note
+            return None
 
-        notes_list = temp_notes_list
+        def makeLineLayerValid(note):
+            if note['_lineLayer'] > line_layers.Top:
+                note['_lineLayer'] = remove_zeros(note['_lineLayer'])
+            if note['_lineLayer'] in Notes().validRows:
+                return note
+            return None
 
-        cut_dirs = Notes().cut_dirs
-        line_indices = Notes().line_indices
-        line_layers = Notes().line_layers
+        def makeCutDirectionValid(note):
+            if note['_cutDirection'] > cut_dirs.Dot:
+                note['_cutDirection'] = remove_zeros(note['_cutDirection'])
+            if note['_cutDirection'] in Notes().validCutDirs:
+                return note
+            return None
+
+        def validateNotes(notes_list):
+            validated_notes_list = []
+            index = 0
+            current_note = notes_list[index]
+            while current_note:
+                try:
+                    current_note = makeLineIndexValid(current_note)
+                    if current_note is None:
+                        index += 1
+                        current_note = notes_list[index]
+                        continue
+
+                    current_note = makeLineLayerValid(current_note)
+                    if current_note is None:
+                        index += 1
+                        current_note = notes_list[index]
+                        continue
+
+                    current_note = makeCutDirectionValid(current_note)
+                    if current_note is None:
+                        index += 1
+                        current_note = notes_list[index]
+                        continue
+
+                    validated_notes_list.append(current_note)
+                    index += 1
+                    current_note = notes_list[index]
+                except KeyError:
+                    index += 1
+                    current_note = notes_list[index]
+                    continue
+                except IndexError:
+                    current_note = None
+            return validated_notes_list
+
+        notes_list = validateNotes(notes_list)
 
         oppositeCutDirs = {cut_dirs.Up:        [cut_dirs.DownRight,   cut_dirs.Down,         cut_dirs.DownLeft],
                            cut_dirs.UpRight:   [cut_dirs.Down,        cut_dirs.DownLeft,     cut_dirs.Left],
