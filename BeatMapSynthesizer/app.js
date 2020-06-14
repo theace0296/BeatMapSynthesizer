@@ -87,17 +87,24 @@ class worker {
     // Class methods
     async initFiles() {
         return new Promise(resolve => {
+            _log('initFiles - Updating script file.');
             fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.exe'), path.join(this.tempDir, 'beatmapsynth.exe'));
+            _log('initFiles - Script file updated.');
             let updateFiles = false;
+            _log('initFiles - Checking for version info.');
             if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
+                _log('initFiles - Version info not found.');
                 updateFiles = true;
             }
             else if (compareVersions.compare(fsx.readFileSync(path.join(this.tempDir, 'version.txt')).toString(), this.appVersion, '<')) {
                 updateFiles = true;
+                _log('initFiles - Version out of date.');
             }
             if (updateFiles) {
+                _log('initFiles - Updating version info.');
                 fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion)
                     .then(() => {
+                    _log('initFiles - Updating files.');
                     let files = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
                         "models/HMM_easy_v1.pkl", "models/HMM_normal_v1.pkl", "models/HMM_hard_v1.pkl", "models/HMM_expert_v1.pkl", "models/HMM_expertPlus_v1.pkl",
                         "models/HMM_easy_v2.pkl", "models/HMM_normal_v2.pkl", "models/HMM_hard_v2.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus_v2.pkl",
@@ -108,11 +115,12 @@ class worker {
                     }
                 })
                     .then(() => {
-                    resolve(updateFiles);
+                    resolve(true);
                 });
             }
             else {
-                resolve(updateFiles);
+                _log('initFiles - Files up to date.');
+                resolve(true);
             }
         });
     }
