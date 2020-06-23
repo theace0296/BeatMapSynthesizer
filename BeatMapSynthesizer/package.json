@@ -69,9 +69,8 @@
 	"main": "app.js",
 	"name": "beat-map-synthesizer",
 	"scripts": {
-		"prebuild": "pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
 		"build": "tsc --build && echo %npm_package_version% > ./dist/latest.txt",
-		"clean": "tsc --build",
+		"clean": "pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
 		"start": "electron .",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder"

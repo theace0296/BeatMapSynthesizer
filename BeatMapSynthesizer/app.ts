@@ -49,8 +49,6 @@ class __beatMapArgs {
  * 2147483648 is 2GB in Bytes.
  */
 const __coreCount: number = (() => {
-    // Temp lower core count for multitasking
-    return 2;
     let workingCores: number = cpus().length > 2 ? Math.floor(cpus().length / 2) : 1;
     if (totalmem() >= (workingCores * 2147483648)) {
         return workingCores;
