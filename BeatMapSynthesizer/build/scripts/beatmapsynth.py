@@ -13,7 +13,6 @@ from zipfile import ZipFile
 
 import audioread
 import librosa
-import markovify
 import numpy as np
 import pandas as pd
 import scipy
@@ -35,7 +34,8 @@ def _print(message=None):
         sys.stdout.write(f"{message}\n")
         sys.stdout.flush()
     else:
-        sys.stdout.write('_________________________________________________________\n')
+        sys.stdout.write(
+            '_________________________________________________________\n')
         sys.stdout.flush()
 
 
@@ -134,8 +134,10 @@ class Notes:
         Top = 2
     line_layers = Rows()
 
-    validCutDirs = [cut_dirs.Up, cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight, cut_dirs.Down, cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft, cut_dirs.Dot]
-    validColumns = [line_indices.Col1, line_indices.Col2, line_indices.Col3, line_indices.Col4]
+    validCutDirs = [cut_dirs.Up, cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight,
+                    cut_dirs.Down, cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft, cut_dirs.Dot]
+    validColumns = [line_indices.Col1, line_indices.Col2,
+                    line_indices.Col3, line_indices.Col4]
     validRows = [line_layers.Bottom, line_layers.Middle, line_layers.Top]
 
 
@@ -191,15 +193,15 @@ class Main:
                   'modulated_beat_list': []}
 
         self.tracks = {
-                    'bpm': 0,
-                    'beat_times': [],
-                    'y': 0,
-                    'sr': 0,
-                    'easy': _lists,
-                    'normal': _lists,
-                    'hard': _lists,
-                    'expert': _lists,
-                    'expertplus': _lists}
+            'bpm': 0,
+            'beat_times': [],
+            'y': 0,
+            'sr': 0,
+            'easy': _lists,
+            'normal': _lists,
+            'hard': _lists,
+            'expert': _lists,
+            'expertplus': _lists}
 
     def write_info_file(self):
         """This function creates the 'info.dat' file."""
@@ -253,8 +255,8 @@ class Main:
                 '_environmentName': self.environment,
                 '_customData': {},
                 '_difficultyBeatmapSets': [
-                 {'_beatmapCharacteristicName': 'Standard',
-                  '_difficultyBeatmaps': difficulty_beatmaps_array}]
+                    {'_beatmapCharacteristicName': 'Standard',
+                     '_difficultyBeatmaps': difficulty_beatmaps_array}]
                 }
 
         with open(f"{self.workingDir}/info.dat", 'w') as f:
@@ -265,41 +267,46 @@ class Main:
         if self.difficulty.casefold() == 'ALL'.casefold():
             for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
                 level = {
-                 '_version': '2.0.0',
-                 '_customData': {'_time': '',  # not sure what time refers to
-                                 '_BPMChanges': [],
-                                 '_bookmarks': []},
-                 '_events': self.tracks[diff.casefold()]['events_list'],
-                 '_notes': self.tracks[diff.casefold()]['notes_list'],
-                 '_obstacles': self.tracks[diff.casefold()]['obstacles_list']}
+                    '_version': '2.0.0',
+                    '_customData': {'_time': '',  # not sure what time refers to
+                                    '_BPMChanges': [],
+                                    '_bookmarks': []},
+                    '_events': self.tracks[diff.casefold()]['events_list'],
+                    '_notes': self.tracks[diff.casefold()]['notes_list'],
+                    '_obstacles': self.tracks[diff.casefold()]['obstacles_list']}
                 with open(f"{self.workingDir}/{diff}.dat", 'w') as f:
                     json.dump(level, f, indent=4)
         else:
             level = {
-                 '_version': '2.0.0',
-                 '_customData': {'_time': '',  # not sure what time refers to
-                                 '_BPMChanges': [],
-                                 '_bookmarks': []},
-                 '_events': self.tracks[self.difficulty.casefold()]['events_list'],
-                 '_notes': self.tracks[self.difficulty.casefold()]['notes_list'],
-                 '_obstacles': self.tracks[self.difficulty.casefold()]['obstacles_list']}
+                '_version': '2.0.0',
+                '_customData': {'_time': '',  # not sure what time refers to
+                                '_BPMChanges': [],
+                                '_bookmarks': []},
+                '_events': self.tracks[self.difficulty.casefold()]['events_list'],
+                '_notes': self.tracks[self.difficulty.casefold()]['notes_list'],
+                '_obstacles': self.tracks[self.difficulty.casefold()]['obstacles_list']}
             with open(f"{self.workingDir}/{self.difficulty}.dat", 'w') as f:
                 json.dump(level, f, indent=4)
 
     def convert_music_file(self):
         """Converts audio file from supported type to EGG"""
         if self.song_path.endswith('.mp3'):
-            AudioSegment.from_mp3(self.song_path).export(f"{self.workingDir}/song.egg", format='ogg')
+            AudioSegment.from_mp3(self.song_path).export(
+                f"{self.workingDir}/song.egg", format='ogg')
         elif self.song_path.endswith('.wav'):
-            AudioSegment.from_wav(self.song_path).export(f"{self.workingDir}/song.egg", format='ogg')
+            AudioSegment.from_wav(self.song_path).export(
+                f"{self.workingDir}/song.egg", format='ogg')
         elif self.song_path.endswith('.flv'):
-            AudioSegment.from_flv(self.song_path).export(f"{self.workingDir}/song.egg", format='ogg')
+            AudioSegment.from_flv(self.song_path).export(
+                f"{self.workingDir}/song.egg", format='ogg')
         elif self.song_path.endswith('.raw'):
-            AudioSegment.from_raw(self.song_path).export(f"{self.workingDir}/song.egg", format='ogg')
+            AudioSegment.from_raw(self.song_path).export(
+                f"{self.workingDir}/song.egg", format='ogg')
         elif self.song_path.endswith('.ogg') or self.song_path.endswith('.egg'):
             shutil.copyfile(self.song_path, f"{self.workingDir}/song.egg")
         else:
-            raise IOError("Unsupported file type. Choose a file of type MP3, WAV, FLV, RAW, OGG, or EGG.")
+            raise IOError(
+                "Unsupported file type. Choose a file of type MP3, WAV, FLV, RAW, OGG, or EGG.")
 
     def events_writer(self, difficulty):
         """Function for writing a list of events."""
@@ -350,7 +357,8 @@ class Main:
         lastEventIntensity = 'Off'
         lastEventRing = 0
         # Offset is applied to change the lighting every n'th second
-        eventColorSwapInterval = round(self.tracks['bpm'] / 60) * self.eventColorSwapOffset
+        eventColorSwapInterval = round(
+            self.tracks['bpm'] / 60) * self.eventColorSwapOffset
 
         firstNote = notes_list[0]
         lastNote = notes_list[len(notes_list) - 1]
@@ -395,7 +403,8 @@ class Main:
             except Exception:
                 _print()
                 _print(traceback.format_exc())
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(
+                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
                 _print()
 
@@ -415,7 +424,8 @@ class Main:
             except Exception:
                 _print()
                 _print(traceback.format_exc())
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(
+                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
                 _print()
 
@@ -430,7 +440,8 @@ class Main:
             except Exception:
                 _print()
                 _print(traceback.format_exc())
-                _print(f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
+                _print(
+                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
                 _print(json.dumps(event, indent=4))
                 _print()
 
@@ -477,7 +488,8 @@ class Main:
 
     def run_model(self, difficulty):
         """Refractored model runner to allow for only a single mapping function"""
-        _print(f"\t{self.song_name} | Modeling {difficulty} using {self.model} model...")
+        _print(
+            f"\t{self.song_name} | Modeling {difficulty} using {self.model} model...")
 
         if self.model == 'random':
             """
@@ -521,7 +533,9 @@ class Main:
         def seconds(number):
             return round(self.tracks['bpm'] / 60) * number
 
-        notes_list = list(filter(lambda note: note['_time'] >= seconds(2), notes_list))  # Only keep notes that come after the 2 seconds into the song
+        # Only keep notes that come after the 2 seconds into the song
+        notes_list = list(
+            filter(lambda note: note['_time'] >= seconds(2), notes_list))
 
         def remove_zeros(number):
             while number % 10 == 0:
@@ -604,7 +618,8 @@ class Main:
                           cut_dirs.Left:       cut_dirs.Right,
                           cut_dirs.UpLeft:     cut_dirs.DownRight}
 
-        cardinalDirs = [cut_dirs.Up, cut_dirs.Right, cut_dirs.Down, cut_dirs.Left]
+        cardinalDirs = [cut_dirs.Up, cut_dirs.Right,
+                        cut_dirs.Down, cut_dirs.Left]
         upDownDirs = [cut_dirs.Up, cut_dirs.Down]
         leftRightDirs = [cut_dirs.Left, cut_dirs.Right]
 
@@ -618,7 +633,8 @@ class Main:
                           line_layers.Top:      [line_layers.Bottom, line_layers.Middle]}
 
         # Top Row can't have cuts inward
-        layerInwards = {line_layers.Top: [cut_dirs.DownRight, cut_dirs.Down, cut_dirs.DownLeft]}
+        layerInwards = {line_layers.Top: [
+            cut_dirs.DownRight, cut_dirs.Down, cut_dirs.DownLeft]}
         # Columns 1 and 4 can't have cuts inward
         indexInwards = {line_indices.Col1: [cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight],
                         line_indices.Col4: [cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft]}
@@ -631,12 +647,14 @@ class Main:
                     try:
                         if (lastNote['_cutDirection'] != cut_dirs.Dot and notes_list[i]['_cutDirection'] != oppositeCutDir[lastNote['_cutDirection']] and
                                 notes_list[i]['_type'] == lastNote['_type']):
-                            notes_list[i]['_cutDirection'] = int(oppositeCutDir[lastNote['_cutDirection']])
+                            notes_list[i]['_cutDirection'] = int(
+                                oppositeCutDir[lastNote['_cutDirection']])
 
                     except Exception:
                         _print()
                         _print(traceback.format_exc())
-                        _print(f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(
+                            f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print()
                     try:
@@ -645,14 +663,17 @@ class Main:
                                 notes_list[i]['_type'] != lastNote['_type']):
 
                             if int(np.random.choice([0, 1])):
-                                notes_list[i]['_lineIndex'] = int(np.random.choice(oppositeIndices[lastNote['_lineIndex']]))
+                                notes_list[i]['_lineIndex'] = int(np.random.choice(
+                                    oppositeIndices[lastNote['_lineIndex']]))
                             else:
-                                notes_list[i]['_lineLayer'] = int(np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
+                                notes_list[i]['_lineLayer'] = int(
+                                    np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
                     except Exception:
                         _print()
                         _print(traceback.format_exc())
-                        _print(f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(
+                            f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print()
 
@@ -667,18 +688,21 @@ class Main:
                                 if notes_list[i]['_lineIndex'] == lastNote['_lineIndex']:
                                     if notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Dot
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Dot
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Dot
 
                                     elif notes_list[i]['_lineIndex'] == line_indices.Col1:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Left
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Left
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Left
                                         if notes_list[i]['_type'] == 0 and notes_list[i]['_lineLayer'] < lastNote['_lineLayer']:
                                             notes_list[i-1]['_lineLayer'] = notes_list[i]['_lineLayer']
                                             notes_list[i]['_lineLayer'] = lastNote['_lineLayer']
 
                                     elif notes_list[i]['_lineIndex'] == line_indices.Col4:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Right
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Right
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Right
                                         if notes_list[i]['_type'] == 0 and notes_list[i]['_lineLayer'] > lastNote['_lineLayer']:
                                             notes_list[i-1]['_lineLayer'] = notes_list[i]['_lineLayer']
                                             notes_list[i]['_lineLayer'] = lastNote['_lineLayer']
@@ -687,21 +711,25 @@ class Main:
 
                                     if notes_list[i]['_lineLayer'] == line_layers.Bottom:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Down
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Down
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Down
 
                                     elif notes_list[i]['_lineLayer'] == line_layers.Middle:
                                         choice = int(np.random.choice([0, 1]))
                                         notes_list[i]['_cutDirection'] = cut_dirs.Down
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Down
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Down
 
                                     elif notes_list[i]['_lineLayer'] == line_layers.Top:
                                         notes_list[i]['_cutDirection'] = cut_dirs.Up
-                                        notes_list[i-1]['_cutDirection'] = cut_dirs.Up
+                                        notes_list[i -
+                                                   1]['_cutDirection'] = cut_dirs.Up
 
                     except Exception:
                         _print()
                         _print(traceback.format_exc())
-                        _print(f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(
+                            f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print()
 
@@ -729,14 +757,16 @@ class Main:
                     except Exception:
                         _print()
                         _print(traceback.format_exc())
-                        _print(f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                        _print(
+                            f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}")
                         _print(json.dumps(notes_list[i], indent=4))
                         _print()
 
             except Exception:
                 _print()
                 _print(traceback.format_exc())
-                _print(f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
+                _print(
+                    f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
                 _print(json.dumps(notes_list[i], indent=4))
                 _print()
             lastNote = notes_list[i]
@@ -768,7 +798,8 @@ class Main:
         line_layer = [0, 1, 2]
         types = [0, 1, 3]
         directions = list(range(0, 8))
-        self.tracks['beat_times'] = [x * (self.tracks['bpm'] / 60) for x in self.tracks['beat_times']]
+        self.tracks['beat_times'] = [
+            x * (self.tracks['bpm'] / 60) for x in self.tracks['beat_times']]
 
         if difficulty == 'Easy' or difficulty == 'Normal':
             for beat in self.tracks['beat_times']:
@@ -784,10 +815,13 @@ class Main:
                     continue
         else:
             # Randomly choose beats to have more than one note placed
-            random_beats = np.random.choice(self.tracks['beat_times'], np.random.choice(range(len(self.tracks['beat_times']))))
-            randomly_duplicated_beat_times = np.concatenate([self.tracks['beat_times'], random_beats])
+            random_beats = np.random.choice(self.tracks['beat_times'], np.random.choice(
+                range(len(self.tracks['beat_times']))))
+            randomly_duplicated_beat_times = np.concatenate(
+                [self.tracks['beat_times'], random_beats])
             randomly_duplicated_beat_times.sort()
-            randomly_duplicated_beat_times = [float(x) for x in randomly_duplicated_beat_times]
+            randomly_duplicated_beat_times = [
+                float(x) for x in randomly_duplicated_beat_times]
             for beat in randomly_duplicated_beat_times:
                 note = {'_time': beat,
                         '_lineIndex':    int(np.random.choice(line_index)),
@@ -842,7 +876,8 @@ class Main:
             random_walk = MC.walk()
         df_walk = self.walk_to_data_frame(random_walk)
         # Combine beat numbers with HMM walk steps
-        df_preds = pd.concat([pd.DataFrame(beats, columns=['_time']), df_walk], axis=1, sort=True)
+        df_preds = pd.concat(
+            [pd.DataFrame(beats, columns=['_time']), df_walk], axis=1, sort=True)
         df_preds.dropna(axis=0, inplace=True)
         # Write notes dictionaries
         return self.write_notes_hmm(df_preds)
@@ -862,14 +897,17 @@ class Main:
                                                        sr=self.tracks['sr'],
                                                        bins_per_octave=BINS_PER_OCTAVE,
                                                        n_bins=N_OCTAVES * BINS_PER_OCTAVE)), ref=np.max)
-        tempo, beats = librosa.beat.beat_track(y=self.tracks['y'], sr=self.tracks['sr'], trim=False)
+        tempo, beats = librosa.beat.beat_track(
+            y=self.tracks['y'], sr=self.tracks['sr'], trim=False)
         Csync = librosa.util.sync(C, beats, aggregate=np.median)
 
         # For plotting purposes, we'll need the timing of the beats
         # We fix_frames to include non-beat frames 0 and C.shape[1] (final frame)
-        beat_times = librosa.frames_to_time(librosa.util.fix_frames(beats, x_min=0, x_max=C.shape[1]), sr=self.tracks['sr'])
+        beat_times = librosa.frames_to_time(librosa.util.fix_frames(
+            beats, x_min=0, x_max=C.shape[1]), sr=self.tracks['sr'])
 
-        R = librosa.segment.recurrence_matrix(Csync, width=3, mode='affinity', sym=True)
+        R = librosa.segment.recurrence_matrix(
+            Csync, width=3, mode='affinity', sym=True)
         # Enhance diagonals with a median filter (Equation 2)
         df = librosa.segment.timelag_filter(scipy.ndimage.median_filter)
         Rf = df(R, size=(1, 7))
@@ -897,9 +935,11 @@ class Main:
 
         def estimate_segments():
             mms = MinMaxScaler()
-            melspec = librosa.feature.melspectrogram(y=self.tracks['y'], sr=self.tracks['sr'])
+            melspec = librosa.feature.melspectrogram(
+                y=self.tracks['y'], sr=self.tracks['sr'])
             mms.fit(librosa.power_to_db(melspec, ref=np.max))
-            data_transformed = mms.transform(librosa.power_to_db(melspec, ref=np.max))
+            data_transformed = mms.transform(
+                librosa.power_to_db(melspec, ref=np.max))
 
             sum_of_squared_distances = []
             K = range(1, 12)
@@ -919,7 +959,8 @@ class Main:
             except Exception:
                 _print()
                 _print(traceback.format_exc())
-                _print(f"Segmentation estimation error in song: {self.song_name}")
+                _print(
+                    f"Segmentation estimation error in song: {self.song_name}")
                 _print()
                 return 5
 
@@ -939,12 +980,14 @@ class Main:
         # Convert beat indices to frames
         bound_frames = beats[bound_beats]
         # Make sure we cover to the end of the track
-        bound_frames = librosa.util.fix_frames(bound_frames, x_min=None, x_max=C.shape[1]-1)
+        bound_frames = librosa.util.fix_frames(
+            bound_frames, x_min=None, x_max=C.shape[1]-1)
         bound_times = librosa.frames_to_time(bound_frames)
         bound_times = [(x/60) * tempo for x in bound_times]
         beat_numbers = list(range(len(bound_frames)))
         bound_beats = np.append(bound_beats, list(range(len(beats)))[-1])
-        segments = list(zip(zip(bound_times, bound_times[1:]), zip(bound_beats, bound_beats[1:]), bound_segs))
+        segments = list(zip(zip(bound_times, bound_times[1:]), zip(
+            bound_beats, bound_beats[1:]), bound_segs))
 
         return segments, beat_times, tempo
 
@@ -954,7 +997,8 @@ class Main:
         for seg in segments:
             length = seg[1][1] - seg[1][0]
             lengths.append(length)
-        df = pd.concat([pd.Series(lengths, name='length'), pd.Series([x[2] for x in segments], name='seg_no')], axis=1)
+        df = pd.concat([pd.Series(lengths, name='length'), pd.Series(
+            [x[2] for x in segments], name='seg_no')], axis=1)
         return df
 
     def segment_predictions(self, segment_df, HMM_model):
@@ -968,9 +1012,11 @@ class Main:
         for index, row in segment_df.iterrows():
             if row['seg_no'] not in completed_segments.keys():
                 def get_preds(init_state, index):
-                    pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
+                    pred = HMM_model.walk(init_state=tuple(
+                        preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
                     while len(pred) < row['length']:
-                        pred = HMM_model.walk(init_state=tuple(preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
+                        pred = HMM_model.walk(init_state=tuple(
+                            preds.iloc[-5:, 0])) if init_state else HMM_model.walk()
                     obj = {0: {row['seg_no']: {'start': 0, 'end': len(pred)}},
                            1: {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}}}
                     completed_segments.update(obj[index])
@@ -990,13 +1036,17 @@ class Main:
                     preds = pd.concat([preds, pred], axis=0, ignore_index=True)
                 else:
                     def get_preds(extend, preds):
-                        pred = preds.iloc[completed_segments[row['seg_no']]['start']: completed_segments[row['seg_no']]['end'], 0]
+                        pred = preds.iloc[completed_segments[row['seg_no']]
+                                          ['start']: completed_segments[row['seg_no']]['end'], 0]
                         diff = row['length'] - len(pred)
-                        pred = pd.concat([pred, pd.Series(extend[0: diff+1])], axis=0, ignore_index=True)
-                        completed_segments.update({row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
+                        pred = pd.concat(
+                            [pred, pd.Series(extend[0: diff+1])], axis=0, ignore_index=True)
+                        completed_segments.update(
+                            {row['seg_no']: {'start': len(preds)+1, 'end': len(preds)+len(pred)}})
                         return pd.concat([preds, pred], axis=0, ignore_index=True)
                     try:
-                        extend = HMM_model.walk(init_state=tuple(preds.iloc[completed_segments[row['seg_no']]['end'] - 5: completed_segments[row['seg_no']]['end'], 0]))
+                        extend = HMM_model.walk(init_state=tuple(
+                            preds.iloc[completed_segments[row['seg_no']]['end'] - 5: completed_segments[row['seg_no']]['end'], 0]))
                         preds = get_preds(extend, preds)
                     except Exception:
                         extend = HMM_model.walk()
@@ -1016,7 +1066,8 @@ class Main:
         preds = self.segment_predictions(segments_df, MC)
         # Combine beat numbers with HMM walk steps
         beats = [(x/60) * tempo for x in beat_times]
-        df_preds = pd.concat([pd.DataFrame(beats, columns=['_time']), preds], axis=1, sort=True)
+        df_preds = pd.concat(
+            [pd.DataFrame(beats, columns=['_time']), preds], axis=1, sort=True)
         df_preds.dropna(axis=0, inplace=True)
         # Write notes dictionaries
         return self.write_notes_hmm(df_preds)
@@ -1082,7 +1133,8 @@ class Main:
                                     'expert':     expert_probabilities,
                                     'expertplus': expertPlus_probabilities}
 
-        p = difficulty_probabilities[difficulty.casefold()][get_rate_level_from_decibel(decibel)]
+        p = difficulty_probabilities[difficulty.casefold(
+        )][get_rate_level_from_decibel(decibel)]
 
         return np.random.choice([0, 1, 2, 4, 8, 16], p=p)
 
@@ -1097,19 +1149,23 @@ class Main:
         D = np.abs(librosa.stft(self.tracks['y']))
         decibel = librosa.amplitude_to_db(D, ref=np.max)
         # Get beat frames and sync with amplitudes
-        tempo, beat_frames = librosa.beat.beat_track(self.tracks['y'], self.tracks['sr'], trim=False)
-        beat_decibel = pd.DataFrame(librosa.util.sync(decibel, beat_frames, aggregate=np.mean))
+        tempo, beat_frames = librosa.beat.beat_track(
+            self.tracks['y'], self.tracks['sr'], trim=False)
+        beat_decibel = pd.DataFrame(librosa.util.sync(
+            decibel, beat_frames, aggregate=np.mean))
         # Mean amplitude per beat
         avg_beat_decibel = beat_decibel.mean()
         # Choose rates and smooth rate transitions
         rates = [0]
         counter = 1
         while counter < len(avg_beat_decibel)-1:
-            rate = self.choose_rate(np.mean([avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
+            rate = self.choose_rate(np.mean(
+                [avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
             diff = np.abs(rate - rates[-1])
             maxdiff = 4 if 'expert'.casefold() in difficulty.casefold() else 2
             while diff > maxdiff:
-                rate = self.choose_rate(np.mean([avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
+                rate = self.choose_rate(np.mean(
+                    [avg_beat_decibel.iloc[counter-1], avg_beat_decibel.iloc[counter], avg_beat_decibel.iloc[counter+1]]), difficulty)
                 diff = rates[-1] - rate
             if rate == 4 and rates[-1] == 4:
                 rate = np.random.choice([0, 1, 2])
@@ -1154,14 +1210,16 @@ class Main:
                 counter += 1
             elif expanded_beat_list[counter] == expanded_beat_list[-1]:
                 length = len(expanded_beat_list[first: -1])
-                df = df.append(pd.DataFrame({'length': length, 'seg_no': expanded_beat_list[-1]['segment']}, index=[0]))
+                df = df.append(pd.DataFrame(
+                    {'length': length, 'seg_no': expanded_beat_list[-1]['segment']}, index=[0]))
                 break
             elif expanded_beat_list[counter]['segment'] == expanded_beat_list[counter+1]['segment']:
                 counter += 1
             elif expanded_beat_list[counter]['segment'] != expanded_beat_list[counter+1]['segment']:
                 last = counter
                 length = len(expanded_beat_list[first: last+1])
-                df = df.append(pd.DataFrame({'length': length, 'seg_no': expanded_beat_list[counter]['segment']}, index=[0]))
+                df = df.append(pd.DataFrame(
+                    {'length': length, 'seg_no': expanded_beat_list[counter]['segment']}, index=[0]))
                 counter += 1
         return df
 
@@ -1174,7 +1232,8 @@ class Main:
         (segments, beat_times, tempo) = self.laplacian_segmentation()
         self.tracks[difficulty.casefold()]['modulated_beat_list'] = (
             self.amplitude_rate_modulation(difficulty))
-        segments_df = self.segments_to_data_frame_rate_modulated(segments, difficulty)
+        segments_df = self.segments_to_data_frame_rate_modulated(
+            segments, difficulty)
         preds = self.segment_predictions(segments_df, MC)
         # Combine beat numbers with HMM walk steps
         beat_times = [(x/60) * tempo for x in beat_times]
@@ -1186,8 +1245,10 @@ class Main:
             if value['beat_count'] not in self.tracks[difficulty.casefold()]['modulated_beat_list']:
                 beats.drop(index=index, inplace=True)
         leftDF = beats.astype('float64')
-        rightDF = pd.Series(self.tracks[difficulty.casefold()]['modulated_beat_list'], name='beat_count').astype('float64')
-        merged_beats = pd.merge(left=leftDF, right=rightDF, how='outer', on='beat_count', sort=True)
+        rightDF = pd.Series(self.tracks[difficulty.casefold(
+        )]['modulated_beat_list'], name='beat_count').astype('float64')
+        merged_beats = pd.merge(
+            left=leftDF, right=rightDF, how='outer', on='beat_count', sort=True)
         merged_beats.interpolate(inplace=True)
         merged_beats.drop(columns='beat_count', inplace=True)
 
@@ -1244,9 +1305,12 @@ if __name__ == '__main__':
     _print(f"\t{main.song_name} | Mapping...")
     if main.difficulty.casefold() == 'ALL'.casefold():
         for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
-            main.tracks[diff.casefold()]['notes_list'] = main.run_model(diff.casefold())
-            main.tracks[diff.casefold()]['events_list'] = main.events_writer(diff.casefold())
-            main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(diff.casefold())
+            main.tracks[diff.casefold()]['notes_list'] = main.run_model(
+                diff.casefold())
+            main.tracks[diff.casefold()]['events_list'] = main.events_writer(
+                diff.casefold())
+            main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(
+                diff.casefold())
     else:
         main.tracks[main.difficulty.casefold()]['notes_list'] = (
             main.run_model(main.difficulty.casefold()))
