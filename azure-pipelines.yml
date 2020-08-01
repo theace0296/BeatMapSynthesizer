@@ -29,7 +29,7 @@ stages:
       displayName: Install Node.js
     - task: UsePythonVersion@0
       inputs:
-        versionSpec: 3.8.3
+        versionSpec: 3.8.5
         addToPath: true
         architecture: x64
       displayName: Install Python
