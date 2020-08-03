@@ -33,29 +33,29 @@ stages:
         addToPath: true
         architecture: x64
       displayName: Install Python
-    - task: PowerShell@2
-      inputs:
-        targetType: inline
-        failOnStderr: false
-        script: >
-          python -m pip install --upgrade pip
+    # - task: PowerShell@2
+      # inputs:
+        # targetType: inline
+        # failOnStderr: false
+        # script: >
+          # python -m pip install --upgrade pip
 
-          python -m pip install wheel
+          # python -m pip install wheel
 
-          python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
+          # python -m pip install -r $(Build.SourcesDirectory)/BeatMapSynthesizer/build/scripts/requirements.txt
 
-          python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
+          # python -m pip install https://github.com/pyinstaller/pyinstaller/tarball/develop
 
-          python -m pip install https://github.com/librosa/librosa/zipball/main
+          # python -m pip install https://github.com/librosa/librosa/zipball/main
 
-          $pyPath = python -c "import sys; print(sys.executable)"
+          # $pyPath = python -c "import sys; print(sys.executable)"
 
-          $pyPath = Split-Path -Path $pyPath
+          # $pyPath = Split-Path -Path $pyPath
 
-          $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
+          # $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
 
-          python -Wignore $pyPath -install
-      displayName: Install packages
+          # python -Wignore $pyPath -install
+      # displayName: Install packages
     - task: CmdLine@2
       displayName: Build app
       inputs:
