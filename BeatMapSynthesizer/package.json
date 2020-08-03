@@ -44,6 +44,9 @@
 			"build/css/flat-ui.css",
 			"build/images/beatMapSynth_Banner.jpg",
 			"build/scripts/beatmapsynth.exe",
+			"build/scripts/beatmapsynth.py",
+			"build/scripts/WinPython-x64-3830.exe",
+			"build/scripts/VC_redist.x64.exe",
 			"build/scripts/cover.jpg",
 			"build/scripts/ffmpeg.exe",
 			"build/scripts/ffplay.exe",
@@ -52,7 +55,8 @@
 			"!*.map",
 			"!*.njsproj",
 			"!build/scripts/__pycache__",
-			"!build/scripts/beatmapsynth.py",
+			"!build/scripts/WPy64-3830",
+			"!build/scripts/.vscode",
 			"!build/scripts/requirements.txt",
 			"node_modules/flat-ui/**/*"
 		]

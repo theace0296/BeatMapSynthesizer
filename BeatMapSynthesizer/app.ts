@@ -1,7 +1,7 @@
 // Modules to control application life and create native browser window
 import { app, BrowserWindow, ipcMain, dialog, ProgressBarOptions } from 'electron';
 import * as path from "path";
-import { execFile, exec, ChildProcess } from 'child_process';
+import { execFile, exec, execSync, ChildProcess } from 'child_process';
 import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
 import * as compareVersions from 'compare-versions';
@@ -71,6 +71,7 @@ class worker {
     pythonExePath: string;
     shellsRunning: number;
     activeShells: ChildProcess[];
+    pythonExists: boolean;
 
     // Constructor
     constructor() {
@@ -79,50 +80,107 @@ class worker {
         this.appVersion = app.getVersion();
         this.scriptsInternalPath = path.join(this.appPath, "build/scripts");
         this.tempDir = path.join(process.env.APPDATA, 'beat-map-synthesizer', 'temp');
-        this.pythonExePath = path.join(this.tempDir, "beatmapsynth.exe");
+        this.pythonExePath = path.join(this.tempDir, "WPy64-3830", "python-3.8.3.amd64", "python.exe");
         this.shellsRunning = 0;
         this.activeShells = [];
+        this.pythonExists = false;
     }
 
     // Class methods
     async initFiles(): Promise<boolean> {
         return new Promise(resolve => {
             _log('initFiles - Updating script file.');
-            fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.exe'), path.join(this.tempDir, 'beatmapsynth.exe'));
+            fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.py'), path.join(this.tempDir, 'beatmapsynth.py'));
             _log('initFiles - Script file updated.');
-            let updateFiles = false;
+
+            fsx.writeFileSync(path.join(this.tempDir, 'songs.json'), `[]`)
+
             _log('initFiles - Checking for version info.');
             if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
                 _log('initFiles - Version info not found.');
-                updateFiles = true;
             }
             else if (compareVersions.compare(fsx.readFileSync(path.join(this.tempDir, 'version.txt')).toString(), this.appVersion, '<')) {
-                updateFiles = true;
                 _log('initFiles - Version out of date.');
             }
 
-            if (updateFiles) {
-                _log('initFiles - Updating version info.');
-                fsx.writeFile(path.join(this.tempDir, 'version.txt'), this.appVersion)
-                    .then(() => {
-                        _log('initFiles - Updating files.');
-                        let files: string[] = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
-                            "models/HMM_easy_v1.pkl", "models/HMM_normal_v1.pkl", "models/HMM_hard_v1.pkl", "models/HMM_expert_v1.pkl", "models/HMM_expertPlus_v1.pkl",
-                            "models/HMM_easy_v2.pkl", "models/HMM_normal_v2.pkl", "models/HMM_hard_v2.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus_v2.pkl", 
-                            "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl",
-                            "models/HMM_easy_v4.pkl", "models/HMM_normal_v4.pkl", "models/HMM_hard_v4.pkl", "models/HMM_expert_v4.pkl", "models/HMM_expertPlus_v4.pkl"];
+            _log('initFiles - Updating version info.');
+            fsx.writeFileSync(path.join(this.tempDir, 'version.txt'), this.appVersion);
 
-                        for (let file of files) {
-                            fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+            _log('initFiles - Updating model files.');
+            let files: string[] = ["cover.jpg", "ffmpeg.exe", "ffplay.exe", "ffprobe.exe",
+                "models/HMM_easy_v1.pkl", "models/HMM_normal_v1.pkl", "models/HMM_hard_v1.pkl", "models/HMM_expert_v1.pkl", "models/HMM_expertPlus_v1.pkl",
+                "models/HMM_easy_v2.pkl", "models/HMM_normal_v2.pkl", "models/HMM_hard_v2.pkl", "models/HMM_expert_v2.pkl", "models/HMM_expertPlus_v2.pkl",
+                "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl",
+                "models/HMM_easy_v4.pkl", "models/HMM_normal_v4.pkl", "models/HMM_hard_v4.pkl", "models/HMM_expert_v4.pkl", "models/HMM_expertPlus_v4.pkl"];
+
+            for (let file of files) {
+                fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+            }
+
+            if (process.platform == 'win32') {
+                exec('python --version', (error, stdout) => {
+                    if (error) {
+                        _log(`${error}`);
+                    }
+                    else {
+                        _log(`${stdout}`);
+                        this.pythonExists = true;
+                        this.pythonExePath = "python";
+                    }
+                    if (!this.pythonExists) {
+                        fsx.copySync(path.join(this.scriptsInternalPath, 'WinPython-x64-3830.exe'), path.join(this.tempDir, 'WinPython-x64-3830.exe'));
+                        fsx.copySync(path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'), path.join(this.tempDir, 'VC_redist.x64.exe'));
+
+                        _log('initFiles - Installing VC Redist 2017.');
+                        execFile(path.join(this.tempDir, 'VC_redist.x64.exe'), ["/install /passive /norestart"], { windowsVerbatimArguments: true })
+
+                        _log('initFiles - Installing WinPython.');
+                        if (!fsx.pathExistsSync(path.join(this.tempDir, 'WPy64-3830'))) {
+                            execFile(path.join(this.tempDir, 'WinPython-x64-3830.exe'), ["-o", `"${path.join(this.tempDir, 'WPy64-3830').normalize().replace(/\\/gi, "/")}"`, "-y"], { windowsVerbatimArguments: true })
+                                .on('close', () => {
+                                    _log('initFiles - Files Updated.');
+                                    resolve(true)
+                                });
                         }
-                    })
-                    .then(() => {
-                        resolve(true);
-                    });
+                        else {
+                            _log('initFiles - Files Updated.');
+                            resolve(true)
+                        }
+                    }
+                    else {
+                        _log('initFiles - Installing Python packages.');
+                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
+                            execSync(`python -m pip install ${_pkg}`);
+                            _log(`initFiles - Installed ${_pkg}.`);
+                        }
+                        _log('initFiles - Files Updated.');
+                        resolve(true)
+                    }
+                }); 
             }
             else {
-                _log('initFiles - Files up to date.');
-                resolve(true);
+                exec('python3 --version', (error, stdout) => {
+                    if (error) {
+                        _log(`${error}`);
+                    }
+                    else {
+                        _log(`${stdout}`);
+                        this.pythonExists = true;
+                        this.pythonExePath = "python3";
+                    }
+                    if (this.pythonExists) {
+                        _log('initFiles - Installing Python packages.');
+                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
+                            execSync(`python3 -m pip install ${_pkg}`);
+                            _log(`initFiles - Installed ${_pkg}.`);
+                        }
+                        _log('initFiles - Files Updated.');
+                        resolve(true)
+                    }
+                    else {
+                        resolve(false);
+                    }
+                });
             }
         });
     }
@@ -218,19 +276,30 @@ class worker {
             }
         }
 
+        let song_args = {
+            workingDir: `${this.tempDir.normalize().replace(/\\/gi, "/")}`,
+            song_path: `${dir.normalize().replace(/\\/gi, "/")}`,
+            song_name: `${trackname} - ${artistname}`,
+            difficulty: args.difficulty,
+            model: args.model,
+            version: args.version,
+            environment: args.environment,
+            lightsIntensity: args.lightsIntensity,
+            albumDir: `${args.albumDir.normalize().replace(/\\/gi, "/")}`,
+            outDir: `${args.outDir.normalize().replace(/\\/gi, "/")}`,
+            zipFiles: args.zipFiles,
+            debug: args.debug
+        }
+
+        let songs_json = JSON.parse(fsx.readFileSync(path.join(this.tempDir.normalize(), 'songs.json')).toString());
+        let song_index: number = songs_json.length;
+        songs_json.push(song_args);
+        fsx.writeFileSync(path.join(this.tempDir.normalize(), 'songs.json'), JSON.stringify(songs_json))
+
         let temp_args: string[] = [
-            `"${dir.normalize().replace(/\\/gi, "/")}"`,
-            `"${trackname} - ${artistname}"`,
-            `"${args.difficulty}"`,
-            `"${args.model}"`,
-            '--version', args.version.toString(),
-            '--environment', `"${args.environment}"`,
-            '--lightsIntensity', args.lightsIntensity.toString(),
-            '--albumDir', `"${args.albumDir.normalize().replace(/\\/gi, "/")}"`,
-            '--workingDir', `"${this.tempDir.normalize().replace(/\\/gi, "/")}"`,
-            '--outDir', `"${args.outDir.normalize().replace(/\\/gi, "/")}"`,
-            '--zipFiles', args.zipFiles.toString(),
-            '--debug', args.debug.toString()
+            `"${this.tempDir.normalize().replace(/\\/gi, "/")}/beatmapsynth.py"`,
+            song_index.toString(),
+            "--songs_path", `"${this.tempDir.normalize().replace(/\\/gi, "/")}/songs.json"`
         ];
 
         return new Promise(resolve => {

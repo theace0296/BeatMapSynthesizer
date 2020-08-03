@@ -7,11 +7,12 @@
     "alwaysStrict": true,
     "listFiles": true,
     "noImplicitAny": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "esModuleInterop": true
   },
-  "exclude": [
-    "node_modules"
-  ]
+    "exclude": [
+        "node_modules",
+        "build/scripts/__pycache__",
+        "build/scripts/WPy64-3830",
+        "build/scripts/.vscode"
+    ]
 }

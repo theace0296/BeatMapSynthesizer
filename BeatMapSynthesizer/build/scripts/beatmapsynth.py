@@ -13,6 +13,7 @@ from zipfile import ZipFile
 
 import audioread
 import librosa
+import markovify
 import numpy as np
 import pandas as pd
 import scipy
@@ -27,6 +28,26 @@ warnings.filterwarnings(
     "PySoundFile failed. Trying audioread instead.")
 
 isDebug = False
+
+
+class DictX(dict):
+    def __getattr__(self, key):
+        try:
+            return self[key]
+        except KeyError as k:
+            raise AttributeError(k)
+
+    def __setattr__(self, key, value):
+        self[key] = value
+
+    def __delattr__(self, key):
+        try:
+            del self[key]
+        except KeyError as k:
+            raise AttributeError(k)
+
+    def __repr__(self):
+        return '<DictX ' + dict.__repr__(self) + '>'
 
 
 def _print(message=None):
@@ -44,68 +65,46 @@ def _print_debug(message=None):
         _print(message)
 
 
+def _print_exception(exception=None, message=None, json_content=None):
+    if exception and message and json_content:
+        _print_debug()
+        _print_debug(exception)
+        _print_debug(message)
+        _print_debug(json_content)
+        _print_debug()
+    elif exception and message:
+        _print_debug()
+        _print_debug(exception)
+        _print_debug(message)
+        _print_debug()
+    elif exception:
+        _print_debug()
+        _print_debug(exception)
+        _print_debug()
+
+
 def parseArgs():
+    songs_path = "songs.json"
     parser = argparse.ArgumentParser()
-    parser.add_argument('song_path',
-                        metavar='path',
-                        type=str,
-                        help='File Path to song file')
-    parser.add_argument('song_name',
-                        type=str,
-                        help='Name of song to be displayed in Beat Saber')
-    parser.add_argument('difficulty',
-                        type=str,
-                        help="""
-                        Desired difficulty level:
-                        'easy', 'normal', 'hard', 'expert', 'expertplus', or 'all'
-                        """)
-    parser.add_argument('model',
-                        type=str,
-                        help="""
-                        Desired model for mapping:
-                        'random', 'HMM', 'segmented_HMM', 'rate_modulated_segmented_HMM'
-                        """)
-    parser.add_argument('--version',
+    parser.add_argument('song_index',
+                        metavar='sindex',
                         type=int,
-                        help="Version of HMM model to use. Default: 2",
-                        default=2,
-                        required=False)
-    parser.add_argument('--environment',
+                        help='Index to song entry in songs.json.')
+    parser.add_argument('--songs_path',
+                        metavar='spath',
                         type=str,
-                        help="Environment to use in Beat Saber",
-                        default='DefaultEnvironment',
-                        required=False)
-    parser.add_argument('--lightsIntensity',
-                        type=int,
-                        help="Intensity of lighting effects",
-                        default=9,
-                        required=False)
-    parser.add_argument('--albumDir',
-                        type=str,
-                        help="Path to album cover art to use",
-                        default='NONE',
-                        required=False)
-    parser.add_argument('--workingDir',
-                        type=str,
-                        help="Working directory, this is automatically set, do not use this!",
-                        default=os.getcwd(),
-                        required=True)
-    parser.add_argument('--outDir',
-                        type=str,
-                        help="Directory to save outputed files to. Default: Current directory.",
-                        default=os.getcwd(),
-                        required=False)
-    parser.add_argument('--zipFiles',
-                        type=int,
-                        help="Boolean to zip output files.",
-                        default=0,
-                        required=False)
-    parser.add_argument('--debug',
-                        type=int,
-                        help="Boolean to print debug information.",
-                        default=0,
-                        required=False)
-    return parser.parse_args()
+                        default="",
+                        required=False,
+                        help='Path to songs.json.')
+    parsed_args = parser.parse_args()
+
+    if parsed_args.songs_path is not None and parsed_args.songs_path != "" and os.path.exists(parsed_args.songs_path):
+        songs_path = parsed_args.songs_path
+
+    with open(songs_path, "r") as json_data:
+        args = json.load(json_data)
+
+    return DictX(args[parsed_args.song_index])
 
 
 class Notes:
@@ -203,7 +202,7 @@ class Main:
             'expert': _lists,
             'expertplus': _lists}
 
-    def write_info_file(self):
+    def write_info_file(self, difficulties=None):
         """This function creates the 'info.dat' file."""
         difficulty_beatmaps_array = []
 
@@ -221,6 +220,12 @@ class Main:
         expert_beatmaps_df = beatmap_df("Expert", 7, 14)
         expertplus_beatmaps_df = beatmap_df("ExpertPlus", 9, 16)
 
+        diffs_dfs = {'easy': easy_beatmaps_df,
+                     'normal': normal_beatmaps_df,
+                     'hard': hard_beatmaps_df,
+                     'expert': expert_beatmaps_df,
+                     'expertplus': expertplus_beatmaps_df}
+
         if self.difficulty.casefold() == 'easy'.casefold():
             difficulty_beatmaps_array = [easy_beatmaps_df]
         elif self.difficulty.casefold() == 'normal'.casefold():
@@ -231,6 +236,9 @@ class Main:
             difficulty_beatmaps_array = [expert_beatmaps_df]
         elif self.difficulty.casefold() == 'expertplus'.casefold():
             difficulty_beatmaps_array = [expertplus_beatmaps_df]
+        elif difficulties:
+            difficulty_beatmaps_array = [
+                diffs_dfs[diff_item] for diff_item in difficulties]
         elif self.difficulty.casefold() == 'all'.casefold():
             difficulty_beatmaps_array = [easy_beatmaps_df,
                                          normal_beatmaps_df,
@@ -360,7 +368,7 @@ class Main:
         eventColorSwapInterval = round(
             self.tracks['bpm'] / 60) * self.eventColorSwapOffset
 
-        firstNote = notes_list[0]
+        firstNote = notes_list[0] if notes_list else None
         lastNote = notes_list[len(notes_list) - 1]
 
         for note in notes_list:
@@ -401,12 +409,9 @@ class Main:
                              '_value': eventValues['Off']}
                     events_list.append(event)
             except Exception:
-                _print()
-                _print(traceback.format_exc())
-                _print(
-                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
-                _print(json.dumps(event, indent=4))
-                _print()
+                _print_exception(traceback.format_exc(),
+                                 f"Lights Event Writing Error in Song: {self.song_name} during Event:",
+                                 json.dumps(event, indent=4))
 
             # Rings
             try:
@@ -422,12 +427,9 @@ class Main:
                 events_list.append(event)
                 lastEventRing = lastEventRing + 1
             except Exception:
-                _print()
-                _print(traceback.format_exc())
-                _print(
-                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
-                _print(json.dumps(event, indent=4))
-                _print()
+                _print_exception(traceback.format_exc(),
+                                 f"Rings Event Writing Error in Song: {self.song_name} during Event:",
+                                 json.dumps(event, indent=4))
 
             # Lasers
             try:
@@ -438,12 +440,9 @@ class Main:
 
                     events_list.append(event)
             except Exception:
-                _print()
-                _print(traceback.format_exc())
-                _print(
-                    f"1.1 Event Writing Error in Song: {self.song_name} during Event:")
-                _print(json.dumps(event, indent=4))
-                _print()
+                _print_exception(traceback.format_exc(),
+                                 f"Lasers Event Writing Error in Song: {self.song_name} during Event:",
+                                 json.dumps(event, indent=4))
 
         return events_list
 
@@ -537,36 +536,37 @@ class Main:
         notes_list = list(
             filter(lambda note: note['_time'] >= seconds(2), notes_list))
 
-        def remove_zeros(number):
-            while number % 10 == 0:
-                number //= 10
-            return number
-
-        def makeLineIndexValid(note):
-            if note['_lineIndex'] > line_indices.Col4:
-                note['_lineIndex'] = remove_zeros(note['_lineIndex'])
-            if note['_lineIndex'] in Notes().validColumns:
-                return note
-            return None
-
-        def makeLineLayerValid(note):
-            if note['_lineLayer'] > line_layers.Top:
-                note['_lineLayer'] = remove_zeros(note['_lineLayer'])
-            if note['_lineLayer'] in Notes().validRows:
-                return note
-            return None
-
-        def makeCutDirectionValid(note):
-            if note['_cutDirection'] > cut_dirs.Dot:
-                note['_cutDirection'] = remove_zeros(note['_cutDirection'])
-            if note['_cutDirection'] in Notes().validCutDirs:
-                return note
-            return None
-
         def validateNotes(notes_list):
             validated_notes_list = []
             index = 0
             current_note = notes_list[index]
+
+            def remove_zeros(number):
+                while number % 10 == 0:
+                    number //= 10
+                return number
+
+            def makeLineIndexValid(note):
+                if note['_lineIndex'] > line_indices.Col4:
+                    note['_lineIndex'] = remove_zeros(note['_lineIndex'])
+                if note['_lineIndex'] in Notes().validColumns:
+                    return note
+                return None
+
+            def makeLineLayerValid(note):
+                if note['_lineLayer'] > line_layers.Top:
+                    note['_lineLayer'] = remove_zeros(note['_lineLayer'])
+                if note['_lineLayer'] in Notes().validRows:
+                    return note
+                return None
+
+            def makeCutDirectionValid(note):
+                if note['_cutDirection'] > cut_dirs.Dot:
+                    note['_cutDirection'] = remove_zeros(note['_cutDirection'])
+                if note['_cutDirection'] in Notes().validCutDirs:
+                    return note
+                return None
+
             while current_note:
                 try:
                     current_note = makeLineIndexValid(current_note)
@@ -595,7 +595,7 @@ class Main:
                     current_note = notes_list[index]
                     continue
                 except IndexError:
-                    current_note = None
+                    break
             return validated_notes_list
 
         notes_list = validateNotes(notes_list)
@@ -639,7 +639,7 @@ class Main:
         indexInwards = {line_indices.Col1: [cut_dirs.UpRight, cut_dirs.Right, cut_dirs.DownRight],
                         line_indices.Col4: [cut_dirs.DownLeft, cut_dirs.Left, cut_dirs.UpLeft]}
 
-        lastNote = notes_list[0]
+        lastNote = notes_list[0] if notes_list else None
 
         for i in range(1, len(notes_list)):
             try:
@@ -651,12 +651,9 @@ class Main:
                                 oppositeCutDir[lastNote['_cutDirection']])
 
                     except Exception:
-                        _print()
-                        _print(traceback.format_exc())
-                        _print(
-                            f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                        _print(json.dumps(notes_list[i], indent=4))
-                        _print()
+                        _print_exception(traceback.format_exc(),
+                                         f"1.1 Note Validation Error for Note: {i} in Song: {self.song_name}",
+                                         json.dumps(notes_list[i], indent=4))
                     try:
                         if (notes_list[i]['_lineIndex'] not in oppositeIndices[lastNote['_lineIndex']] and
                                 notes_list[i]['_lineLayer'] not in oppositeLayers[lastNote['_lineLayer']] and
@@ -670,12 +667,9 @@ class Main:
                                     np.random.choice(oppositeLayers[lastNote['_lineLayer']]))
 
                     except Exception:
-                        _print()
-                        _print(traceback.format_exc())
-                        _print(
-                            f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                        _print(json.dumps(notes_list[i], indent=4))
-                        _print()
+                        _print_exception(traceback.format_exc(),
+                                         f"1.2 Note Validation Error for Note: {i} in Song: {self.song_name}",
+                                         json.dumps(notes_list[i], indent=4))
 
                     try:
                         if notes_list[i]['_time'] == lastNote['_time']:
@@ -726,12 +720,9 @@ class Main:
                                                    1]['_cutDirection'] = cut_dirs.Up
 
                     except Exception:
-                        _print()
-                        _print(traceback.format_exc())
-                        _print(
-                            f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                        _print(json.dumps(notes_list[i], indent=4))
-                        _print()
+                        _print_exception(traceback.format_exc(),
+                                         f"1.3 Note Validation Error for Note: {i} in Song: {self.song_name}",
+                                         json.dumps(notes_list[i], indent=4))
 
                     try:
                         if (notes_list[i]['_lineLayer'] == line_layers.Top and notes_list[i]['_lineIndex'] in [line_indices.Col2, line_indices.Col3]
@@ -755,20 +746,14 @@ class Main:
                             notes_list[i]['_cutDirection'] = cut_dirs.Right
 
                     except Exception:
-                        _print()
-                        _print(traceback.format_exc())
-                        _print(
-                            f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                        _print(json.dumps(notes_list[i], indent=4))
-                        _print()
+                        _print_exception(traceback.format_exc(),
+                                         f"1.4 Note Validation Error for Note: {i} in Song: {self.song_name}",
+                                         json.dumps(notes_list[i], indent=4))
 
             except Exception:
-                _print()
-                _print(traceback.format_exc())
-                _print(
-                    f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}")
-                _print(json.dumps(notes_list[i], indent=4))
-                _print()
+                _print_exception(traceback.format_exc(),
+                                 f"1.0 Note Validation Error for Note: {i} in Song: {self.song_name}",
+                                 json.dumps(notes_list[i], indent=4))
             lastNote = notes_list[i]
 
         return notes_list
@@ -957,11 +942,8 @@ class Main:
                         return i
                         break
             except Exception:
-                _print()
-                _print(traceback.format_exc())
-                _print(
-                    f"Segmentation estimation error in song: {self.song_name}")
-                _print()
+                _print_exception(traceback.format_exc(),
+                                 f"Segmentation estimation error in song: {self.song_name}")
                 return 5
 
         k_estimate = estimate_segments()
@@ -1278,6 +1260,8 @@ if __name__ == '__main__':
     testFile.write(f"\nArgs: {sys.argv}\n")
     testFile.close()
 
+    isDebug = args.debug
+
     # Main Class Init
     main = Main(args.song_path,
                 args.song_name,
@@ -1296,46 +1280,64 @@ if __name__ == '__main__':
     _print
     _print(f"\t{main.song_name} | Loading Song...")
     (main.tracks['bpm'],
-     main.tracks['beat_times'],
-     main.tracks['y'],
-     main.tracks['sr']) = main.get_beat_features()
+        main.tracks['beat_times'],
+        main.tracks['y'],
+        main.tracks['sr']) = main.get_beat_features()
     _print(f"\t{main.song_name} | Song loaded...")
 
     # Write lists for note placement, event placement, and obstacle placement
-    _print(f"\t{main.song_name} | Mapping...")
-    if main.difficulty.casefold() == 'ALL'.casefold():
-        for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
-            main.tracks[diff.casefold()]['notes_list'] = main.run_model(
-                diff.casefold())
-            main.tracks[diff.casefold()]['events_list'] = main.events_writer(
-                diff.casefold())
-            main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(
-                diff.casefold())
-    else:
-        main.tracks[main.difficulty.casefold()]['notes_list'] = (
-            main.run_model(main.difficulty.casefold()))
-        main.tracks[main.difficulty.casefold()]['events_list'] = (
-            main.events_writer(main.difficulty.casefold()))
-        main.tracks[main.difficulty.casefold()]['obstacles_list'] = (
-            main.obstacles_writer(main.difficulty.casefold()))
-    _print(f"\t{main.song_name} | Mapping done!")
+    try:
+        _print(f"\t{main.song_name} | Mapping...")
+        diffs = []
+        if main.difficulty.casefold() == 'ALL'.casefold():
+            for diff in ['easy', 'normal', 'hard', 'expert', 'expertplus']:
+                try:
+                    main.tracks[diff.casefold()]['notes_list'] = main.run_model(
+                        diff.casefold())
+                    if main.tracks[diff.casefold()]['notes_list']:
+                        main.tracks[diff.casefold()]['events_list'] = main.events_writer(
+                            diff.casefold())
+                        if main.tracks[diff.casefold()]['events_list']:
+                            main.tracks[diff.casefold()]['obstacles_list'] = main.obstacles_writer(
+                                diff.casefold())
+                            diffs.append(diff.casefold())
+                            continue
+                    raise IOError(f"Diff processing error, {diff} skipped!")
+                except IOError:
+                    _print_exception(traceback.format_exc())
+        else:
+            main.tracks[main.difficulty.casefold()]['notes_list'] = (
+                main.run_model(main.difficulty.casefold()))
+            main.tracks[main.difficulty.casefold()]['events_list'] = (
+                main.events_writer(main.difficulty.casefold()))
+            main.tracks[main.difficulty.casefold()]['obstacles_list'] = (
+                main.obstacles_writer(main.difficulty.casefold()))
+        _print(f"\t{main.song_name} | Mapping done!")
 
-    # Write and zip files
-    _print(f"\t{main.song_name} | Writing files to disk...")
-    main.write_info_file()
-    main.write_level_file()
-    _print(f"\t{main.song_name} | Converting music file...")
-    main.convert_music_file()
-    _print(f"\t{main.song_name} | Zipping folder...")
-    main.zip_writer()
+        # Write and zip files
+        _print(f"\t{main.song_name} | Writing files to disk...")
+        if diffs != []:
+            main.write_info_file(diffs)
+        else:
+            raise IOError(
+                "Song processing error, song skipped!")
+        main.write_level_file()
+        _print(f"\t{main.song_name} | Converting music file...")
+        main.convert_music_file()
+        _print(f"\t{main.song_name} | Zipping folder...")
+        main.zip_writer()
 
-    # Print finished message
-    finishMessage = f"{main.song_name} | Finished! \n\tLook for "
-    if (main.zipFiles):
-        finishMessage += f"zipped folder in {main.outDir}, unzip the folder, "
-    else:
-        finishMessage += f"folder in {main.outDir}, "
-    finishMessage += "place in the 'CustomMusic' folder in Beat Saber's files."
-    _print()
-    _print(finishMessage)
-    _print()
+        # Print finished message
+        finishMessage = f"{main.song_name} | Finished! \n\tLook for "
+        if (main.zipFiles):
+            finishMessage += f"zipped folder in {main.outDir}, unzip the folder, "
+        else:
+            finishMessage += f"folder in {main.outDir}, "
+        finishMessage += "place in the 'CustomMusic' folder in Beat Saber's files."
+        _print()
+        _print(finishMessage)
+        _print()
+        sys.exit(0)
+    except IOError:
+        _print_exception(traceback.format_exc())
+        sys.exit(1)
