@@ -9,6 +9,7 @@ import { EOL as newline, cpus, totalmem } from 'os';
 import { isNullOrUndefined } from 'util';
 import sanitize from 'sanitize-filename';
 import jimp from 'jimp';
+import { Registry, RegistryItem } from 'winreg';
 
 /**
  * __beatMapArgs is a class for containing the arguments for the beat map generation in a single object
@@ -89,6 +90,7 @@ class worker {
     // Class methods
     async initFiles(): Promise<boolean> {
         return new Promise(resolve => {
+            let needsUpdate: boolean = false;
             _log('initFiles - Updating script file.');
             fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.py'), path.join(this.tempDir, 'beatmapsynth.py'));
             _log('initFiles - Script file updated.');
@@ -98,9 +100,11 @@ class worker {
             _log('initFiles - Checking for version info.');
             if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
                 _log('initFiles - Version info not found.');
+                needsUpdate = true;
             }
             else if (compareVersions.compare(fsx.readFileSync(path.join(this.tempDir, 'version.txt')).toString(), this.appVersion, '<')) {
                 _log('initFiles - Version out of date.');
+                needsUpdate = true;
             }
 
             _log('initFiles - Updating version info.');
@@ -114,7 +118,9 @@ class worker {
                 "models/HMM_easy_v4.pkl", "models/HMM_normal_v4.pkl", "models/HMM_hard_v4.pkl", "models/HMM_expert_v4.pkl", "models/HMM_expertPlus_v4.pkl"];
 
             for (let file of files) {
-                fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+                if (!fsx.existsSync(path.join(this.tempDir, file)) || needsUpdate) {
+                    fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+                }
             }
 
             if (process.platform == 'win32') {
@@ -128,11 +134,24 @@ class worker {
                         this.pythonExePath = "python";
                     }
                     if (!this.pythonExists) {
-                        fsx.copySync(path.join(this.scriptsInternalPath, 'WinPython-x64-3830.exe'), path.join(this.tempDir, 'WinPython-x64-3830.exe'));
-                        fsx.copySync(path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'), path.join(this.tempDir, 'VC_redist.x64.exe'));
+                        if (!fsx.existsSync(path.join(this.tempDir, 'WinPython-x64-3830.exe')) || needsUpdate) {
+                            fsx.copySync(path.join(this.scriptsInternalPath, 'WinPython-x64-3830.exe'), path.join(this.tempDir, 'WinPython-x64-3830.exe'));
+                        }
+                        
+                        if (!fsx.existsSync(path.join(this.tempDir, 'VC_redist.x64.exe')) || needsUpdate) {
+                            fsx.copySync(path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'), path.join(this.tempDir, 'VC_redist.x64.exe'));
+                        }
 
-                        _log('initFiles - Installing VC Redist 2017.');
-                        execFile(path.join(this.tempDir, 'VC_redist.x64.exe'), ["/install /passive /norestart"], { windowsVerbatimArguments: true })
+                        const regKey: Registry = new Winreg({ key: "\\SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64" })
+                        let vcredistExists: boolean = false;
+                        regKey.get('Major', function (err, item) {
+                            vcredistExists = parseInt(item.value, 16) == 14;
+                        });
+
+                        if (!vcredistExists) {
+                            _log('initFiles - Installing VC Redist 2017.');
+                            execFile(path.join(this.tempDir, 'VC_redist.x64.exe'), ["/install /passive /norestart"], { windowsVerbatimArguments: true })
+                        }
 
                         _log('initFiles - Installing WinPython.');
                         if (!fsx.pathExistsSync(path.join(this.tempDir, 'WPy64-3830'))) {
@@ -149,10 +168,8 @@ class worker {
                     }
                     else {
                         _log('initFiles - Installing Python packages.');
-                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
-                            execSync(`python -m pip install ${_pkg}`);
-                            _log(`initFiles - Installed ${_pkg}.`);
-                        }
+                        execSync(`python -m pip install audioread librosa numpy pandas scipy sklearn soundfile pydub argparse markovify`);
+                        _log(`initFiles - Installed Python packages.`);
                         _log('initFiles - Files Updated.');
                         resolve(true)
                     }
@@ -170,10 +187,9 @@ class worker {
                     }
                     if (this.pythonExists) {
                         _log('initFiles - Installing Python packages.');
-                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
-                            execSync(`python3 -m pip install ${_pkg}`);
-                            _log(`initFiles - Installed ${_pkg}.`);
-                        }
+                        execSync(`python -m pip install audioread librosa numpy pandas scipy sklearn soundfile pydub argparse markovify`);
+                        _log(`initFiles - Installed Python packages.`);
+                        _log('initFiles - Files Updated.');
                         _log('initFiles - Files Updated.');
                         resolve(true)
                     }

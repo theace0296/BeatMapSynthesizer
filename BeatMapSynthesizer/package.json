@@ -43,7 +43,6 @@
 			"build/css/docs.css",
 			"build/css/flat-ui.css",
 			"build/images/beatMapSynth_Banner.jpg",
-			"build/scripts/beatmapsynth.exe",
 			"build/scripts/beatmapsynth.py",
 			"build/scripts/WinPython-x64-3830.exe",
 			"build/scripts/VC_redist.x64.exe",
@@ -64,6 +63,7 @@
 	"devDependencies": {
 		"@jimp/types": "^0.13.0",
 		"@types/node": "^8.0.14",
+		"@types/winreg": "^1.2.30",
 		"electron": "^9.0.0",
 		"electron-builder": "^22.6.1",
 		"typescript": "^3.2.2",
@@ -74,7 +74,7 @@
 	"name": "beat-map-synthesizer",
 	"scripts": {
 		"build": "tsc --build && echo %npm_package_version% > ./dist/latest.txt",
-		"clean": "pyinstaller ./beatmapsynth.spec --distpath ./build/scripts",
+		"clean": "tsc --build && echo %npm_package_version% > ./dist/latest.txt && yarn dist",
 		"start": "electron .",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder"
@@ -86,6 +86,7 @@
 		"fs-extra": "^9.0.0",
 		"jimp": "^0.13.0",
 		"music-metadata": "^6.4.0",
-		"sanitize-filename": "^1.6.3"
+		"sanitize-filename": "^1.6.3",
+		"winreg-silent": "^1.2.4"
 	}
 }

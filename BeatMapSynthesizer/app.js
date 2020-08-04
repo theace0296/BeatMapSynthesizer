@@ -86,6 +86,7 @@ class worker {
     // Class methods
     async initFiles() {
         return new Promise(resolve => {
+            let needsUpdate = false;
             _log('initFiles - Updating script file.');
             fsx.copySync(path.join(this.scriptsInternalPath, 'beatmapsynth.py'), path.join(this.tempDir, 'beatmapsynth.py'));
             _log('initFiles - Script file updated.');
@@ -93,9 +94,11 @@ class worker {
             _log('initFiles - Checking for version info.');
             if (!fsx.existsSync(path.join(this.tempDir, 'version.txt'))) {
                 _log('initFiles - Version info not found.');
+                needsUpdate = true;
             }
             else if (compareVersions.compare(fsx.readFileSync(path.join(this.tempDir, 'version.txt')).toString(), this.appVersion, '<')) {
                 _log('initFiles - Version out of date.');
+                needsUpdate = true;
             }
             _log('initFiles - Updating version info.');
             fsx.writeFileSync(path.join(this.tempDir, 'version.txt'), this.appVersion);
@@ -106,7 +109,9 @@ class worker {
                 "models/HMM_easy_v3.pkl", "models/HMM_normal_v3.pkl", "models/HMM_hard_v3.pkl", "models/HMM_expert_v3.pkl", "models/HMM_expertPlus_v3.pkl",
                 "models/HMM_easy_v4.pkl", "models/HMM_normal_v4.pkl", "models/HMM_hard_v4.pkl", "models/HMM_expert_v4.pkl", "models/HMM_expertPlus_v4.pkl"];
             for (let file of files) {
-                fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+                if (!fsx.existsSync(path.join(this.tempDir, file)) || needsUpdate) {
+                    fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
+                }
             }
             if (process.platform == 'win32') {
                 child_process_1.exec('python --version', (error, stdout) => {
@@ -115,14 +120,25 @@ class worker {
                     }
                     else {
                         _log(`${stdout}`);
-                        //this.pythonExists = true;
-                        //this.pythonExePath = "python";
+                        this.pythonExists = true;
+                        this.pythonExePath = "python";
                     }
                     if (!this.pythonExists) {
-                        fsx.copySync(path.join(this.scriptsInternalPath, 'WinPython-x64-3830.exe'), path.join(this.tempDir, 'WinPython-x64-3830.exe'));
-                        fsx.copySync(path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'), path.join(this.tempDir, 'VC_redist.x64.exe'));
-                        _log('initFiles - Installing VC Redist 2017.');
-                        child_process_1.execFile(path.join(this.tempDir, 'VC_redist.x64.exe'), ["/install /passive /norestart"], { windowsVerbatimArguments: true });
+                        if (!fsx.existsSync(path.join(this.tempDir, 'WinPython-x64-3830.exe')) || needsUpdate) {
+                            fsx.copySync(path.join(this.scriptsInternalPath, 'WinPython-x64-3830.exe'), path.join(this.tempDir, 'WinPython-x64-3830.exe'));
+                        }
+                        if (!fsx.existsSync(path.join(this.tempDir, 'VC_redist.x64.exe')) || needsUpdate) {
+                            fsx.copySync(path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'), path.join(this.tempDir, 'VC_redist.x64.exe'));
+                        }
+                        const regKey = new Winreg({ key: "\\SOFTWARE\\WOW6432Node\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64" });
+                        let vcredistExists = false;
+                        regKey.get('Major', function (err, item) {
+                            vcredistExists = parseInt(item.value, 16) == 14;
+                        });
+                        if (!vcredistExists) {
+                            _log('initFiles - Installing VC Redist 2017.');
+                            child_process_1.execFile(path.join(this.tempDir, 'VC_redist.x64.exe'), ["/install /passive /norestart"], { windowsVerbatimArguments: true });
+                        }
                         _log('initFiles - Installing WinPython.');
                         if (!fsx.pathExistsSync(path.join(this.tempDir, 'WPy64-3830'))) {
                             child_process_1.execFile(path.join(this.tempDir, 'WinPython-x64-3830.exe'), ["-o", `"${path.join(this.tempDir, 'WPy64-3830').normalize().replace(/\\/gi, "/")}"`, "-y"], { windowsVerbatimArguments: true })
@@ -138,10 +154,8 @@ class worker {
                     }
                     else {
                         _log('initFiles - Installing Python packages.');
-                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
-                            child_process_1.execSync(`python -m pip install ${_pkg}`);
-                            _log(`initFiles - Installed ${_pkg}.`);
-                        }
+                        child_process_1.execSync(`python -m pip install audioread librosa numpy pandas scipy sklearn soundfile pydub argparse markovify`);
+                        _log(`initFiles - Installed Python packages.`);
                         _log('initFiles - Files Updated.');
                         resolve(true);
                     }
@@ -159,10 +173,9 @@ class worker {
                     }
                     if (this.pythonExists) {
                         _log('initFiles - Installing Python packages.');
-                        for (let _pkg of ["audioread", "librosa", "numpy", "pandas", "scipy", "sklearn", "soundfile", "pydub", "argparse", "markovify"]) {
-                            child_process_1.execSync(`python3 -m pip install ${_pkg}`);
-                            _log(`initFiles - Installed ${_pkg}.`);
-                        }
+                        child_process_1.execSync(`python -m pip install audioread librosa numpy pandas scipy sklearn soundfile pydub argparse markovify`);
+                        _log(`initFiles - Installed Python packages.`);
+                        _log('initFiles - Files Updated.');
                         _log('initFiles - Files Updated.');
                         resolve(true);
                     }
