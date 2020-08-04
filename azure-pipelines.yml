@@ -1,6 +1,3 @@
-variables:
-- name: version
-  value: 0.0.1
 trigger:
   branches:
     include:
@@ -27,12 +24,12 @@ stages:
       inputs:
         versionSpec: 10.x
       displayName: Install Node.js
-    - task: UsePythonVersion@0
-      inputs:
-        versionSpec: 3.8.5
-        addToPath: true
-        architecture: x64
-      displayName: Install Python
+    # - task: UsePythonVersion@0
+      # inputs:
+        # versionSpec: 3.8.5
+        # addToPath: true
+        # architecture: x64
+      # displayName: Install Python
     # - task: PowerShell@2
       # inputs:
         # targetType: inline
@@ -62,6 +59,7 @@ stages:
       displayName: Build app
       inputs:
         script: >
+          if ($($env:DEBUG)) {Get-ChildItem -Recurse}
           npm install && tsc --build && yarn dist
         workingDirectory: $(Build.SourcesDirectory)/BeatMapSynthesizer
     - task: PowerShell@2
