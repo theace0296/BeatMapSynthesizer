@@ -59,7 +59,6 @@ stages:
       displayName: Build app
       inputs:
         script: >
-          if ($($env:DEBUG)) {Get-ChildItem -Recurse}
           npm install && tsc --build && yarn dist
         workingDirectory: $(Build.SourcesDirectory)/BeatMapSynthesizer
     - task: PowerShell@2
