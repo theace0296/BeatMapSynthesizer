@@ -55,12 +55,14 @@ stages:
           # $pyPath = Join-Path -Path $pyPath -ChildPath "Scripts\pywin32_postinstall.py"
 
           # python -Wignore $pyPath -install
+          
+          # pyinstaller ./beatmapsynth.spec --distpath ./build/scripts
       # displayName: Install packages
     - task: CmdLine@2
       displayName: Build app
       inputs:
         script: >
-          npm install && pyinstaller ./beatmapsynth.spec --distpath ./build/scripts && tsc --build && yarn dist
+          npm install && tsc --build && yarn dist
         workingDirectory: $(Build.SourcesDirectory)/BeatMapSynthesizer
     - task: PowerShell@2
       inputs:
