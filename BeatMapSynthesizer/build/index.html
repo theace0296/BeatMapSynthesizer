@@ -1,0 +1,165 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Loading Bootstrap -->
+    <link href='../node_modules/flat-ui/bootstrap/css/bootstrap.css' rel='stylesheet' />
+    <link href='../node_modules/flat-ui/bootstrap/css/prettify.css' rel='stylesheet' />
+    <!-- Loading Flat UI -->
+    <link href="../node_modules/flat-ui/css/flat-ui.css" rel="stylesheet" />
+    <link href="../node_modules/flat-ui/css/docs.css" rel="stylesheet" />
+    <link href="./css/flat-ui.css" rel="stylesheet" />
+    <link href="./css/docs.css" rel="stylesheet" />
+    <title>Beat Map Synthesizer</title>
+</head>
+<body>
+    <div class="container">
+        <div class="demo-headline">
+            <img src="./images/beatMapSynth_Banner.jpg" alt="beatMapSynth_Banner" style="width:90%" />
+        </div>
+        <h3 class="demo-panel-title">Select a music file...</h3>
+        <div class="row">
+            <br />
+            <div class="col-lg-4">
+                <button id="selectFilesButton" class="btn btn-block btn-lg btn-primary">Select file(s)</button>
+            </div>
+            <div class="col-lg-4">
+                <button id="selectDirectoryButton" class="btn btn-block btn-lg btn-primary">Select folder(s)</button>
+            </div>
+            <div class="col-lg-4">
+                <button id="selectFileListButton" class="btn btn-block btn-lg btn-primary">Provide a list of folders</button>
+            </div>
+        </div>
+        <div class="row">
+            <br />
+            <div class="col-lg-12 form-group">
+                <textarea id="filelist" class="hidden form-control prettyprint mvl" rows="10" style="resize: none;"></textarea>
+            </div>
+        </div>
+        <div class="row">
+            <br />
+            <div class="col-lg-12">
+                <ul id="dirsfilesList"></ul>
+            </div>
+        </div>
+        <h3 class="demo-panel-title">Choose a difficulty...</h3>
+        <div class="row">
+            <br />
+            <select id="difficultylist" name="difficultylist" value="Difficulty" class="btn btn-block btn-lg btn-primary dropdown-toggle">
+                <optgroup label="Difficulty">
+                    <option value="all">All</option>
+                    <option value="easy">Easy</option>
+                    <option value="normal">Normal</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                    <option value="expertplus">Expert Plus</option>
+                </optgroup>
+            </select>
+        </div>
+        <h3 class="demo-panel-title">Choose a model...</h3>
+        <div class="row">
+            <br />
+            <select id="modellist" name="modellist" value="Model" class="btn btn-block btn-lg btn-primary dropdown-toggle">
+                <optgroup label="Model">
+                    <option value="random">Random</option>
+                    <option value="HMM">HMM</option>
+                    <option value="segmented_HMM">Segmented HMM</option>
+                    <option value="rate_modulated_segmented_HMM">Rate-Modulated Segmented HMM</option>
+                </optgroup>
+            </select>
+            <div id="dataSource" class="hidden">
+                <br />
+                <p>Select the data source for the model (default is '> 70% ratings')...</p>
+                <select id="datalist" name="datalist" value="Data Source" class="btn btn-block btn-default btn-primary dropdown-toggle">
+                    <optgroup label="Data Source">
+                        <option value="2">Maps with rating > 70%</option>
+                        <option value="1">Maps with rating > 90%</option>
+                        <option value="3">Maps with rating > 80%, downloads > 1000, and ratings > 10</option>
+                        <option value="4">Maps with rating > 75%, downloads > 100, ratings > 10, and all difficulties mapped for the song</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+        <h3 class="demo-panel-title">Choose an environment...</h3>
+        <div class="row">
+            <br />
+            <select id="environmentlist" name="environmentlist" value="Environment" class="btn btn-block btn-default btn-primary dropdown-toggle">
+                <optgroup label="Environment">
+                    <option value="RANDOM">Random</option>
+                    <option value="DefaultEnvironment">Default</option>
+                    <option value="BigMirrorEnvironment">BigMirror</option>
+                    <option value="Origins">Origins</option>
+                    <option value="NiceEnvironment">Nice</option>
+                    <option value="TriangleEnvironment">Triangle</option>
+                    <option value="KDAEnvironment">K/DA</option>
+                    <option value="DragonsEnvironment">Imagine Dragons</option>
+                    <option value="MonstercatEnvironment">Monstercat</option>
+                    <option value="CrabRaveEnvironment">Crab Rave</option>
+                    <option value="PanicEnvironment">Panic at the Disco!</option>
+                    <option value="RocketEnvironment">Rocket League</option>
+                    <option value="GreenDayEnvironment">Green Day</option>
+                    <option value="GreenDayGrenadeEnvironment">Green Day Grenade</option>
+                </optgroup>
+            </select>
+            <div id="lightsIntensity">
+                <br />
+                <br />
+                <p>Choose the intensity of lighting effects (default: 9)...</p>
+                <input id="lightsIntensityInput" type="number" class="form-control" min="1" max="11" value="9" />
+            </div>
+        </div>
+        <h3 class="demo-panel-title">Select the directory to output files to..</h3>
+        <div class="row">
+            <br />
+            <div class="col-lg-12">
+                <button id="chooseOutputDirButton" class="btn btn-block btn-lg btn-primary">Select folder</button>
+            </div>
+        </div>
+        <div class="row">
+            <br />
+            <div class="col-lg-12">
+                <ul id="outputDirList"></ul>
+            </div>
+        </div>
+        <h3 class="demo-panel-title">Generate Beat Map(s)...</h3>
+        <div class="row">
+            <br />
+            <div class="col-lg-6">
+                <button id="generateBeatMapButton" class="btn btn-block btn-lg btn-primary">Generate Beat Map(s)</button>
+                <label class="checkbox" for="zipFilesCheckbox" id="zipFilesLabel">
+                    <input type="checkbox" value="" id="zipFilesCheckbox" data-toggle="checkbox">
+                    Zip files after creating output?
+                </label>
+            </div>
+            <div class="col-lg-6">
+                <button id="cancelButton" class="btn btn-block btn-lg btn-danger">Cancel</button>
+            </div>
+        </div>
+        <div class="row">
+            <br />
+            <div class="progress" style="height: 20px;">
+                <div id="taskProgressBar" class="progress-bar" style="width: 0%;"></div>
+            </div>
+            <div id="taskLogDiv">
+                <pre id="taskLog_MAIN" class="prettyprint mvl"></pre>
+            </div>
+        </div>
+    </div>
+    <!-- Renderer process -->
+    <script>require('./js/renderer.js')</script>
+    <!-- FlatUI script -->
+    <script src="../node_modules/flat-ui/js/jquery-1.8.3.min.js"></script>
+    <script src="../node_modules/flat-ui/js/jquery-ui-1.10.3.custom.min.js"></script>
+    <script src="../node_modules/flat-ui/js/jquery.ui.touch-punch.min.js"></script>
+    <script src="../node_modules/flat-ui/js/bootstrap.min.js"></script>
+    <script src="../node_modules/flat-ui/js/bootstrap-select.js"></script>
+    <script src="../node_modules/flat-ui/js/bootstrap-switch.js"></script>
+    <script src="../node_modules/flat-ui/js/flatui-checkbox.js"></script>
+    <script src="../node_modules/flat-ui/js/flatui-radio.js"></script>
+    <script src="../node_modules/flat-ui/js/jquery.tagsinput.js"></script>
+    <script src="../node_modules/flat-ui/js/jquery.placeholder.js"></script>
+    <script src="../node_modules/flat-ui/bootstrap/js/google-code-prettify/prettify.js"></script>
+    <script src="../node_modules/flat-ui/js/application.js"></script>
+</body>
+</html>

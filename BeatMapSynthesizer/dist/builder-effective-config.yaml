@@ -1,0 +1,53 @@
+directories:
+  output: dist
+  buildResources: build
+appId: beatmapsynthesizer.app
+artifactName: ${name}-${os}-${arch}-${version}.${ext}
+electronCompile: false
+win:
+  target: portable
+publish:
+  - provider: generic
+    url: localhost
+    owner: TheAce0296
+    releaseType: draft
+files:
+  - filter:
+      - '**/*'
+      - '!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}'
+      - '!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}'
+      - '!**/node_modules/*.d.ts'
+      - '!**/node_modules/.bin'
+      - '!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}'
+      - '!.editorconfig'
+      - '!**/._*'
+      - '!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}'
+      - '!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}'
+      - '!**/{appveyor.yml,.travis.yml,circle.yml}'
+      - '!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}'
+      - build/js/app.js
+      - build/js/__beatMapArgs.js
+      - build/js/pythonApi.js
+      - build/js/worker.js
+      - build/js/preload.js
+      - build/js/renderer.js
+      - build/index.html
+      - build/css/docs.css
+      - build/css/flat-ui.css
+      - build/images/beatMapSynth_Banner.jpg
+      - build/scripts/beatMapSynthServer.py
+      - build/scripts/WinPython.exe
+      - build/scripts/VC_redist.x64.exe
+      - build/scripts/cover.jpg
+      - build/scripts/ffmpeg.exe
+      - build/scripts/ffplay.exe
+      - build/scripts/ffprobe.exe
+      - build/scripts/models/*.pkl
+      - '!*.map'
+      - '!*.njsproj'
+      - '!build/scripts/__pycache__'
+      - '!build/scripts/WPy64'
+      - '!build/scripts/.vscode'
+      - '!build/scripts/requirements.txt'
+      - node_modules/flat-ui/**/*
+electronVersion: 13.0.1
