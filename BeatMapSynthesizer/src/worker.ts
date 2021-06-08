@@ -605,7 +605,7 @@ export class Worker {
     const workingDir = this.song_args.workingDir;
     const outDir = this.song_args.outDir;
     if (!fsx.existsSync(path.join(workingDir, 'cover.jpg'))) {
-      fsx.copyFileSync(this.song_args.albumDir, path.join(workingDir, 'cover.jpg'));
+      fsx.copyFileSync(fsx.existsSync(this.song_args.albumDir) ? this.song_args.albumDir : path.join(this.tempDir, 'cover.jpg'), path.join(workingDir, 'cover.jpg'));
     }
     const files = [
       path.join(workingDir, 'info.dat'),
