@@ -5,6 +5,7 @@ import shutil
 import sys
 import traceback
 import warnings
+import pprint
 
 from flask import Flask
 from flask import jsonify, request
@@ -918,6 +919,8 @@ def convert_music_file():
 
 
 if __name__ == "__main__":
-    app.run(port=5000)
+    app.run(host='127.0.0.1', port=5000, debug=True, threaded=True)
     # http_server = WSGIServer(('127.0.0.1', 5000), app)
-    # http_server.serve_forever()
+    # http_server.start()
+    # pprint.pprint(http_server)
+    # http_server.stop()

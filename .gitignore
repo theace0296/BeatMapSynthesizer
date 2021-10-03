@@ -3,19 +3,18 @@
 .vscode
 
 #Keep these files though!
-!BeatMapSynthesizer/*/*
-!BeatMapSynthesizer/dist/latest.txt
+!dist/latest.txt
 !beatmapsynth.spec
-!BeatMapSynthesizer/build/scripts/*.exe
+!build/scripts/*.exe
 
-BeatMapSynthesizer/dist/*.exe
-BeatMapSynthesizer/dist/win-unpacked
-BeatMapSynthesizer/build/scripts/beatmapsynth.exe
-BeatMapSynthesizer/build/scripts/models
-BeatMapSynthesizer/build/scripts/__pycache__
-BeatMapSynthesizer/build/beatmapsynth
-BeatMapSynthesizer/build/scripts/WPy64
-BeatMapSynthesizer/build/scripts/.vscode
-BeatMapSynthesizer/node_modules
-BeatMapSynthesizer/bin
-BeatMapSynthesizer/obj
+dist/*.exe
+dist/win-unpacked
+build/scripts/beatmapsynth.exe
+build/scripts/models
+build/scripts/__pycache__
+build/beatmapsynth
+build/scripts/WPy64
+build/scripts/.vscode
+node_modules
+bin
+obj
