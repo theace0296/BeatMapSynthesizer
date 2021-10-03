@@ -6,8 +6,10 @@ artifactName: ${name}-${os}-${arch}-${version}.${ext}
 electronCompile: false
 win:
   target: portable
+  icon: build/images/icon_512x512.png
 linux:
   target: AppImage
+  icon: build/images/icon_512x512.png
 publish:
   - provider: generic
     url: localhost
@@ -37,6 +39,7 @@ files:
       - build/css/docs.css
       - build/css/flat-ui.css
       - build/images/beatMapSynth_Banner.jpg
+      - build/images/icon_512x512.png
       - build/scripts/beatMapSynthServer.py
       - build/scripts/WinPython.exe
       - build/scripts/VC_redist.x64.exe
