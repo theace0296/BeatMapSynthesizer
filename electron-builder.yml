@@ -2,7 +2,7 @@ directories:
   output: dist
   buildResources: build
 appId: beatmapsynthesizer.app
-artifactName: ${name}-${os}-${arch}-${version}.${ext}
+artifactName: ${name}-${os}-${version}.${ext}
 electronCompile: false
 win:
   target: portable
