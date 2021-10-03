@@ -2,8 +2,11 @@
 import { app, BrowserWindow, ipcMain, dialog, ProgressBarOptions, screen } from 'electron';
 import * as path from 'path';
 import * as fsx from 'fs-extra';
+import { queue, QueueObject } from 'async';
 import __beatMapArgs from './__beatMapArgs';
 import { Worker } from './worker';
+import PythonServer from './pythonServer';
+import { isPythonServerRunning } from './pythonApi';
 
 const timeoutFunctionWithCallback = (
   file: string,
@@ -42,14 +45,9 @@ const timeoutFunctionWithCallback = (
   );
 };
 
-/**
- * `__mainWindow` is the render process window the user interacts with.
- */
 let __mainWindow: Electron.BrowserWindow;
-
-/**
- * `__activeWorkers` is an array of active workers.
- */
+let __pythonServer: PythonServer;
+let __workerQueue = queue((_, cb) => cb(), 6);
 let __activeWorkers: Worker[] = [];
 
 /**
@@ -74,7 +72,14 @@ app.on('ready', async () => {
 app.on('window-all-closed', () => {
   // On macOS it is common for applications and their menu bar
   // to stay active until the user quits explicitly with Cmd + Q
-  __activeWorkers.forEach(worker => worker.killShell());
+  for (const worker of __activeWorkers) {
+    worker.stopWorker();
+  }
+  __activeWorkers = [];
+  __workerQueue.kill();
+  if (__pythonServer.activeShell) {
+    __pythonServer.killShell();
+  }
   if (process.platform !== 'darwin') app.quit();
 });
 
@@ -99,7 +104,7 @@ function _createMainWindow() {
   __mainWindow.loadFile(path.join(app.getAppPath(), 'build/index.html'));
 
   // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+  __mainWindow.webContents.openDevTools()
 }
 
 /**
@@ -164,8 +169,26 @@ function _findFilesInDir(startPath: string, filter: RegExp, callback: Function) 
  * `__cancelOperation__` is a inter-process communication channel for stopping the current operation.
  * @param _event  The inter-process communication sender of `__cancelOperation__`.
  */
-ipcMain.on('__cancelOperation__', _event => {
-  __activeWorkers.forEach(worker => worker.killShell());
+ipcMain.on('__cancelOperation__', async _event => {
+  _updateTaskProgress(1, 1);
+  for (const worker of __activeWorkers) {
+    worker.stopWorker();
+  }
+  __activeWorkers = [];
+  if (!__workerQueue.idle()) {
+    __workerQueue.pause();
+    __workerQueue.kill();
+    __workerQueue = queue((_, cb) => cb(), 6);
+  }
+  if (__pythonServer.activeShell) {
+    __pythonServer.killShell();
+  }
+  await __pythonServer.startPythonServer();
+  if (await isPythonServerRunning()) {
+    _log('Application Ready!');
+  } else {
+    _error('An error occured while starting the Python server!');
+  }
   _appendMessageTaskLog('Beat Map Generation Canceled!');
 });
 
@@ -174,8 +197,14 @@ ipcMain.on('__cancelOperation__', _event => {
  * @param _event  The inter-process communication sender of `__ready__`.
  */
 ipcMain.on('__ready__', async _event => {
-  new Worker(_appendMessageTaskLog, _log, _error); // Init a worker to run python startup procedures.
-  _log('Application Ready!');
+  // Start up the Python server
+  __pythonServer = new PythonServer(_log, _error);
+  await __pythonServer.startPythonServer();
+  if (await isPythonServerRunning()) {
+    _log('Application Ready!');
+  } else {
+    _error('An error occured while starting the Python server!');
+  }
 });
 
 /**
@@ -289,16 +318,19 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
   _updateTaskProgress(currentCount, totalCount);
 
   const generate = async (file: string, generate_args: __beatMapArgs) => {
-    const worker = new Worker(_appendMessageTaskLog, _log, _error);
+    const worker = new Worker(_appendMessageTaskLog, _error);
     __activeWorkers.push(worker);
     try {
       await worker.generateBeatMaps(file, generate_args);
     } catch (e) {
-      _error(e);
+      _error(e as any);
+    } finally {
+      worker.stopWorker();
+      __activeWorkers.filter(worker => worker.running);
     }
-    worker.killShell();
   };
-  const promises: Promise<void>[] = dir.map((file: string) =>
+
+  const generateWithTimeout = (file: string) =>
     timeoutFunctionWithCallback(
       file,
       generate,
@@ -307,14 +339,11 @@ function _generateBeatMaps(opType: number, dir: string[], args: __beatMapArgs) {
         _updateTaskProgress(currentCount, totalCount);
       },
       args
-    )
-  );
+    );
 
-  Promise.all(promises).then(() => {
-    __activeWorkers.forEach(worker => worker.killShell());
-    __activeWorkers = [];
-    _appendMessageTaskLog('Beat Map Synthesizer Finished!');
-  });
+  for (const file of dir) {
+    __workerQueue.push(file, () => generateWithTimeout(file));
+  }
 }
 
 /**

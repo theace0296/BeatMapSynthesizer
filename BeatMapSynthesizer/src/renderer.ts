@@ -125,13 +125,17 @@ ipcRenderer.on('task-progress', (_event, value: number, maxValue: number) => {
   } else if (value / maxValue <= 0.1) {
     document.getElementById('taskProgressBar')!.innerHTML = `${((value / maxValue) * 100).toFixed(0)}%`;
     document.getElementById('taskProgressBar')!.setAttribute('style', `width: 10%;`);
+  } else if (value === maxValue) {
+    document.getElementById('taskProgressBar')!.innerHTML = `100%`;
+    document.getElementById('taskProgressBar')!.setAttribute('style', `width: 100%;`);
+    taskLogAppendMessage('Beat Map Synthesizer Finished!', 'MAIN');
   } else {
     document.getElementById('taskProgressBar')!.innerHTML = `${((value / maxValue) * 100).toFixed(0)}%`;
     document.getElementById('taskProgressBar')!.setAttribute('style', `width: ${(value / maxValue) * 100}%;`);
   }
 });
 
-ipcRenderer.on('task-log-append-message', (_event, message: string, group: string = 'MAIN') => {
+const taskLogAppendMessage = (message: string, group: string = 'MAIN') => {
   const id = `taskLog_${group}`;
   let element = document.getElementById(id);
   if (!element) {
@@ -144,7 +148,9 @@ ipcRenderer.on('task-log-append-message', (_event, message: string, group: strin
   } else {
     element.appendChild(document.createTextNode(message + '\n'));
   }
-});
+};
+
+ipcRenderer.on('task-log-append-message', (_event, message, group) => taskLogAppendMessage(message, group));
 
 ipcRenderer.on('selectFilesDirs-finished', (_event, param: string[]) => {
   selectedDirs.length = 0;

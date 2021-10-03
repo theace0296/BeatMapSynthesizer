@@ -1,17 +1,12 @@
-import { app } from 'electron';
 import * as path from 'path';
-import { ChildProcess, exec, execFileSync, execSync } from 'child_process';
-import * as mm from 'music-metadata';
 import * as fsx from 'fs-extra';
-import compareVersions from 'compare-versions';
-import { EOL as newline } from 'os';
+import * as mm from 'music-metadata';
 import { v4 as uuidv4 } from 'uuid';
 import sanitize from 'sanitize-filename';
 import jimp from 'jimp';
 import seedrandom from 'seedrandom';
 import __beatMapArgs from './__beatMapArgs';
 import {
-  closePythonServer,
   convertMusicFile,
   getBeatFeatures,
   getEventsList,
@@ -77,210 +72,35 @@ export interface Tracks {
 export class Worker {
   // Class variables
   private _appendMessageTaskLog: (message: string, group?: string) => void;
-  private _log: (message: string) => void;
   private _error: (message: string) => void;
-  appPath: string;
-  scriptsInternalPath: string;
-  tempDir: string;
-  settings: { pythonCmd: string; pythonExists: boolean; modulesInstalled: boolean; isWindows: boolean; hasRequiredExtensions: boolean, version: string; };
-  activeShell?: ChildProcess;
   log_id: string;
   log_header: string;
   song_args?: SongArgs;
   tracks?: Tracks;
+  tempDir: string;
+  running: boolean;
 
   // Constructor
-  constructor(
-    _appendMessageTaskLog: (message: string, group?: string) => void,
-    _log: (message: string) => void,
-    _error: (message: string) => void
-  ) {
+  constructor(_appendMessageTaskLog: (message: string, group?: string) => void, _error: (message: string) => void) {
     this._appendMessageTaskLog = _appendMessageTaskLog;
-    this._log = _log;
     this._error = _error;
     // create the worker
-    this.appPath = app.getAppPath();
-    this.scriptsInternalPath = path.join(this.appPath, 'build/scripts');
-    this.tempDir = path.join(process.env.APPDATA ?? process.cwd(), 'beat-map-synthesizer', 'temp');
     this.log_id = uuidv4();
     this.log_header = '';
-    if (fsx.existsSync(path.join(this.tempDir, 'settings.json'))) {
-      this.settings = JSON.parse(fsx.readFileSync(path.join(this.tempDir, 'settings.json'), 'utf8'));
-    } else {
-      this.settings = {
-        pythonCmd: process.platform === 'win32'
-          ? this.pythonExists()
-            ? 'python'
-            : path.join(this.tempDir, 'WPy64', 'python-3', 'python.exe')
-          : 'python3',
-        pythonExists: process.platform === 'win32'
-          ? this.pythonExists()
-          : true,
-        modulesInstalled: false,
-        isWindows: process.platform === 'win32',
-        hasRequiredExtensions: process.platform !== 'win32',
-        version: '0.0.0',
-      }
-    }
-
-    this.copyScriptFile();
-    if (this.isOutOfDate()) {
-      this.updateModelFiles();
-      if (this.settings.isWindows) {
-        this.windowsInitFiles();
-        this.settings.hasRequiredExtensions = true;
-        this.settings.pythonExists = true;
-      }
-      if (!this.settings.modulesInstalled) {
-        this.installPythonModules();
-        this.settings.modulesInstalled = true;
-      }
-      this.settings.version = app.getVersion();
-      fsx.writeFileSync(path.join(this.tempDir, 'settings.json'), JSON.stringify(this.settings, null, 2));
-    }
+    this.tempDir = path.join(process.env.APPDATA ?? process.cwd(), 'beat-map-synthesizer', 'temp');
+    this.running = false;
   }
 
   // Class methods
-  private log(message: string) {
-    this._log(message);
-  }
   private error(message: string) {
-    this._error(message);
+    this._error(`---------\n${this.log_header}\n---------\n${message}`);
   }
   private appendMessageTaskLog(message: string, useHeader = true) {
     this._appendMessageTaskLog(useHeader ? `\t${this.log_header} | ${message}...` : message, this.log_id);
   }
 
-  isOutOfDate() {
-    return compareVersions.compare(this.settings.version, app.getVersion(), '<');
-  }
-
-  copyScriptFile() {
-    this.log('initFiles - Updating script file.');
-    fsx.copySync(
-      path.join(this.scriptsInternalPath, 'beatMapSynthServer.py'),
-      path.join(this.tempDir, 'beatMapSynthServer.py')
-    );
-    this.log('initFiles - Script file updated.');
-  }
-
-  updateModelFiles() {
-    this.log('initFiles - Updating model files.');
-    const files: string[] = [
-      'cover.jpg',
-      'models/HMM_easy_v1.pkl',
-      'models/HMM_normal_v1.pkl',
-      'models/HMM_hard_v1.pkl',
-      'models/HMM_expert_v1.pkl',
-      'models/HMM_expertplus_v1.pkl',
-      'models/HMM_easy_v2.pkl',
-      'models/HMM_normal_v2.pkl',
-      'models/HMM_hard_v2.pkl',
-      'models/HMM_expert_v2.pkl',
-      'models/HMM_expertplus_v2.pkl',
-      'models/HMM_easy_v3.pkl',
-      'models/HMM_normal_v3.pkl',
-      'models/HMM_hard_v3.pkl',
-      'models/HMM_expert_v3.pkl',
-      'models/HMM_expertplus_v3.pkl',
-      'models/HMM_easy_v4.pkl',
-      'models/HMM_normal_v4.pkl',
-      'models/HMM_hard_v4.pkl',
-      'models/HMM_expert_v4.pkl',
-      'models/HMM_expertplus_v4.pkl',
-    ];
-
-    for (const file of files) {
-      fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
-    }
-
-    if (this.settings.isWindows) {
-      for (const file of ['ffmpeg.exe', 'ffplay.exe', 'ffprobe.exe',]) {
-        fsx.copySync(path.join(this.scriptsInternalPath, file), path.join(this.tempDir, file));
-      }
-    }
-  }
-
-  pythonExists() {
-    try {
-      return !!execSync('python --version').toString();
-    }
-    catch (error) {
-      return false;
-    }
-  }
-
-  windowsInitFiles() {
-    if (!this.settings.pythonExists) {
-      if (!this.settings.hasRequiredExtensions) {
-        if (!fsx.existsSync(path.join(this.tempDir, 'WinPython.exe'))) {
-          fsx.copySync(
-            path.join(this.scriptsInternalPath, 'WinPython.exe'),
-            path.join(this.tempDir, 'WinPython.exe')
-          );
-        }
-
-        if (!fsx.existsSync(path.join(this.tempDir, 'VC_redist.x64.exe'))) {
-          fsx.copySync(
-            path.join(this.scriptsInternalPath, 'VC_redist.x64.exe'),
-            path.join(this.tempDir, 'VC_redist.x64.exe')
-          );
-        }
-
-        this.log('initFiles - Installing VC Redist 2017.');
-        try {
-          execFileSync(
-            path.join(this.tempDir, 'VC_redist.x64.exe'),
-            ['/install /passive /norestart'], {
-              windowsHide: true,
-            }
-          );
-        } catch (error) {
-          this.error(error);
-        }
-      }
-
-      if (!fsx.pathExistsSync(path.join(this.tempDir, 'WPy64'))) {
-        this.log('initFiles - Installing WinPython.');
-        try {
-          execFileSync(
-            path.join(this.tempDir, 'WinPython.exe'),
-            ['-o', `"${path.join(this.tempDir, 'WPy64').normalize().replace(/\\/gi, '/')}"`, '-y'], {
-              windowsHide: true,
-            }
-          );
-        } catch (error) {
-          this.error(error)
-        }
-      }
-    }
-  }
-
-  installPythonModules() {
-    this.log('initFiles - Installing Python packages.');
-    try {
-      let data = '';
-      if (!this.settings.pythonCmd.includes('python.exe')) {
-        data = execSync(
-          `${this.settings.pythonCmd} -m pip install audioread librosa numpy pandas scipy scikit-learn soundfile pydub markovify Flask gevent`, {
-            windowsHide: true,
-          }
-        ).toString();
-      } else {
-        data = execSync(
-          `cd ${path.dirname(this.settings.pythonCmd)} && python.exe -m pip install audioread librosa numpy pandas scipy scikit-learn soundfile pydub markovify Flask gevent`, {
-            windowsHide: true,
-          }
-        ).toString();
-      }
-      this.log(data);
-    } catch (error) {
-      this.error(error);
-    }
-    this.log(`initFiles - Installed Python packages.`);
-  }
-
   async generateBeatMaps(dir: string, args: __beatMapArgs): Promise<boolean> {
+    this.running = true;
     this.appendMessageTaskLog('Starting beatmap generation', false);
     let metadata: mm.IAudioMetadata = await mm.parseFile(path.normalize(dir));
     this.appendMessageTaskLog('Metadata Loaded', false);
@@ -294,9 +114,7 @@ export class Worker {
 
     this.appendMessageTaskLog('Checking if beat map already exists');
 
-    let beatMapExists: boolean =
-      fsx.existsSync(path.join(args.outDir, song_name, 'info.dat')) ||
-      fsx.existsSync(path.join(args.outDir, `${song_name}.zip`));
+    let beatMapExists: boolean = fsx.existsSync(path.join(args.outDir, `${song_name}.zip`));
 
     if (beatMapExists) {
       this.appendMessageTaskLog('Beat map exists, skipping!');
@@ -311,9 +129,8 @@ export class Worker {
 
       if (embeddedart) {
         args.albumDir = await this.extractEmbeddedArt(song_name, embeddedart);
-        args.albumDir = args.albumDir && args.albumDir !== 'NONE'
-          ? args.albumDir
-          : path.join(this.tempDir, 'cover.jpg');
+        args.albumDir =
+          args.albumDir && args.albumDir !== 'NONE' ? args.albumDir : path.join(this.tempDir, 'cover.jpg');
       }
 
       this.appendMessageTaskLog('Setting beat map parameters');
@@ -321,6 +138,10 @@ export class Worker {
       if (args.environment === 'RANDOM') {
         args.environment = this.getRandomEnvironment();
       }
+    }
+
+    if (!this.running) {
+      return false;
     }
 
     this.song_args = {
@@ -341,6 +162,15 @@ export class Worker {
 
     if (!fsx.existsSync(this.song_args.outDir)) {
       fsx.ensureDirSync(this.song_args.outDir);
+    }
+
+    for (const difficulty of ['easy', 'normal', 'hard', 'expert', 'expertplus']) {
+      if (fsx.existsSync(path.join(this.song_args.workingDir, `${difficulty.toLowerCase()}.dat`))) {
+        fsx.removeSync(path.join(this.song_args.workingDir, `${difficulty.toLowerCase()}.dat`));
+      }
+    }
+    if (fsx.existsSync(path.join(this.song_args.workingDir, 'info.dat'))) {
+      fsx.removeSync(path.join(this.song_args.workingDir, 'info.dat'));
     }
 
     const baseLists = {
@@ -369,7 +199,9 @@ export class Worker {
 
     this.appendMessageTaskLog('Generating beat map');
 
-    await this.runPythonShell();
+    if (!this.running) {
+      return false;
+    }
 
     if (this.song_args && this.tracks && (await isPythonServerRunning())) {
       this.appendMessageTaskLog('Loading Song');
@@ -379,6 +211,9 @@ export class Worker {
         ...modelParams,
       };
       this.appendMessageTaskLog('Song loaded');
+      if (!this.running) {
+        return false;
+      }
       const difficulties = (
         this.song_args.difficulty === 'all'
           ? ['easy', 'normal', 'hard', 'expert', 'expertplus']
@@ -388,6 +223,9 @@ export class Worker {
       this.appendMessageTaskLog('Mapping');
       for (const difficulty of difficulties as ('easy' | 'normal' | 'hard' | 'expert' | 'expertplus')[]) {
         this.appendMessageTaskLog(`Processing ${difficulty}`);
+        if (!this.running) {
+          return false;
+        }
         try {
           this.tracks[difficulty].notes_list = (
             await getNotesList({
@@ -402,15 +240,22 @@ export class Worker {
             })
           ).data;
 
+          if (!this.running) {
+            return false;
+          }
+
           if (!this.tracks[difficulty].notes_list || !Array.isArray(this.tracks[difficulty].notes_list)) {
             throw new Error(`Notes list was invalid!\n\t${JSON.stringify(this.tracks[difficulty].notes_list)}`);
           }
 
-          this.tracks[difficulty].events_list = getEventsList({
-            notes_list: this.tracks[difficulty].notes_list,
-            bpm: this.tracks.bpm,
-            eventColorSwapOffset: this.song_args.eventColorSwapOffset,
-          });
+          this.tracks[difficulty].events_list = getEventsList(
+            {
+              notes_list: this.tracks[difficulty].notes_list,
+              bpm: this.tracks.bpm,
+              eventColorSwapOffset: this.song_args.eventColorSwapOffset,
+            },
+            this.error
+          );
 
           this.tracks[difficulty].obstacles_list = getObstaclesList({
             notes_list: this.tracks[difficulty].notes_list,
@@ -419,7 +264,7 @@ export class Worker {
 
           processedDifficultes.push(difficulty);
         } catch (e) {
-          this.error(e);
+          this.error(e as any);
           this.appendMessageTaskLog(`Difficulty processing error, ${difficulty} skipped!`);
         }
         this.appendMessageTaskLog(`Processing ${difficulty} done!`);
@@ -429,10 +274,19 @@ export class Worker {
         this.appendMessageTaskLog('Writing files to disk');
         this.writeInfoFile(processedDifficultes);
         this.writeLevelFile(processedDifficultes);
+        if (!this.running) {
+          return false;
+        }
         this.appendMessageTaskLog('Converting music file');
         await convertMusicFile(this.song_args.song_path, this.song_args.workingDir);
+        if (!this.running) {
+          return false;
+        }
         this.appendMessageTaskLog('Zipping folder');
         this.zipFiles(processedDifficultes);
+        if (!this.running) {
+          return false;
+        }
         this.appendMessageTaskLog(
           `${this.song_args.song_name} | Finished! \n\tLook for ${
             this.song_args.zipFiles === 1 ? 'zipped folder' : 'folder'
@@ -444,7 +298,6 @@ export class Worker {
       } else {
         this.error('Song processing error!');
       }
-      await closePythonServer();
     } else {
       this.error('Python server is not running!');
     }
@@ -452,129 +305,8 @@ export class Worker {
     return true;
   }
 
-  runPythonShell(): Promise<boolean> {
-    const self = this;
-    return new Promise((resolve, reject) => {
-      if (!this.song_args || !this.tracks) {
-        reject(false);
-      }
-      let _remaining: string | undefined;
-
-      const failedToStartTimeout = setTimeout(() => {
-        this.log('Python process failed to spawn -- timed out!')
-        reject(false);
-      }, 30000);
-
-      function parseOut(data?: string) {
-        data && self._log(data);
-      }
-
-      function receiveInternal(this: any, data: string | Buffer, emitType: 'stdout' | 'stderr') {
-        let parts = ('' + data).split(newline);
-
-        if (parts.length === 1) {
-          // an incomplete record, keep buffering
-          _remaining = (_remaining || '') + parts[0];
-          return this;
-        }
-
-        let lastLine = parts.pop();
-        // fix the first line with the remaining from the previous iteration of 'receive'
-        parts[0] = (_remaining || '') + parts[0];
-        // keep the remaining for the next iteration of 'receive'
-        _remaining = lastLine;
-
-        parts.forEach(function (part) {
-          if (part.includes('Running on http://127.0.0.1:5000/')) {
-            clearTimeout(failedToStartTimeout);
-            resolve(true);
-          }
-          parseOut(part);
-        });
-
-        return this;
-      }
-
-      function receiveStdout(data: string | Buffer) {
-        return receiveInternal(data, 'stdout');
-      }
-
-      function receiveStderr(data: string | Buffer) {
-        return receiveInternal(data, 'stderr');
-      }
-
-      if (!this.settings.pythonCmd.includes('python.exe')) {
-        this.activeShell = exec(
-          `${this.settings.pythonCmd} "${path.normalize(path.join(this.tempDir.normalize().replace(/\\/gi, '/'), '/beatMapSynthServer.py'))}"`,
-          {
-            timeout: 300000,
-            windowsHide: true,
-          }
-        );
-      } else {
-        this.activeShell = exec(
-          `cd ${path.dirname(this.settings.pythonCmd)} && python.exe "${path.normalize(path.join(this.tempDir.normalize().replace(/\\/gi, '/'), '/beatMapSynthServer.py'))}"`,
-          {
-            timeout: 300000,
-            windowsHide: true,
-          }
-        );
-      }
-
-      this.activeShell.on('close', code => {
-        this.log('Finished');
-
-        if (!this.song_args) {
-          this.error('Song args was undefined! Error while closing shell!');
-          return;
-        }
-
-        if (code === 0) {
-          this.appendMessageTaskLog('Finished successfully!');
-        } else {
-          this.appendMessageTaskLog(`Failed with exit code: ${code}`);
-        }
-      });
-
-      this.activeShell.stdout?.setEncoding('utf8');
-      this.activeShell.stderr?.setEncoding('utf8');
-
-      this.activeShell.stdout?.on('data', buffer => receiveStdout(buffer));
-
-      this.activeShell.stderr?.on('data', buffer => receiveStderr(buffer));
-
-      this.activeShell.once('spawn', () => {
-        this.log('Python process spawned successfully!')
-        clearTimeout(failedToStartTimeout);
-        resolve(true);
-      });
-
-      this.activeShell.once('error', () => {
-        this.log('Python process failed to spawn!')
-        clearTimeout(failedToStartTimeout);
-        reject(false);
-      });
-
-      setTimeout(() => {
-        this.activeShell?.kill('SIGTERM');
-      }, 450000);
-    });
-  }
-
-  killShell() {
-    if (this.activeShell) {
-      closePythonServer().finally(() => {
-        if (this.activeShell?.connected && !this.activeShell.kill('SIGTERM')) {
-          // Kills a PID and all child process
-          exec(`taskkill /f /t /pid ${this.activeShell.pid}`, (err, stdout) => {
-            console.log('stdout', stdout);
-            console.log('stderr', err);
-          });
-        }
-        delete this.activeShell;
-      })
-    }
-    return true;
+  stopWorker() {
+    this.running = false;
   }
 
   getRandomEnvironment() {
@@ -605,7 +337,10 @@ export class Worker {
     const workingDir = this.song_args.workingDir;
     const outDir = this.song_args.outDir;
     if (!fsx.existsSync(path.join(workingDir, 'cover.jpg'))) {
-      fsx.copyFileSync(fsx.existsSync(this.song_args.albumDir) ? this.song_args.albumDir : path.join(this.tempDir, 'cover.jpg'), path.join(workingDir, 'cover.jpg'));
+      fsx.copyFileSync(
+        fsx.existsSync(this.song_args.albumDir) ? this.song_args.albumDir : path.join(this.tempDir, 'cover.jpg'),
+        path.join(workingDir, 'cover.jpg')
+      );
     }
     const files = [
       path.join(workingDir, 'info.dat'),
@@ -619,7 +354,12 @@ export class Worker {
         zip.addLocalFile(file);
         fsx.unlinkSync(file);
       }
-      zip.writeZip(path.join(this.song_args.outDir.substr(0, this.song_args.outDir.lastIndexOf('/')), `${this.song_args.song_name}.zip`));
+      zip.writeZip(
+        path.join(
+          this.song_args.outDir.substr(0, this.song_args.outDir.lastIndexOf('/')),
+          `${this.song_args.song_name}.zip`
+        )
+      );
       fsx.rmdirSync(workingDir);
       fsx.rmdirSync(this.song_args.outDir);
     } else {

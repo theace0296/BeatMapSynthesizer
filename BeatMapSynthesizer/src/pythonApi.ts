@@ -21,7 +21,11 @@ export const pythonRequest = async (url: string = '', data?: Record<string, unkn
 };
 
 export const isPythonServerRunning = async () => {
-  return !!(await pythonRequest('ping'));
+  try {
+    return !!(await pythonRequest('ping'));
+  } catch (error) {
+    return false;
+  }
 };
 
 export const closePythonServer = async () => {
@@ -56,7 +60,10 @@ export const getNotesList = (args: {
  * @param args
  * @returns event_list
  */
-export const getEventsList = (args: { eventColorSwapOffset: number; notes_list: Notes[]; bpm: number }): Events[] => {
+export const getEventsList = (
+  args: { eventColorSwapOffset: number; notes_list: Notes[]; bpm: number },
+  error
+): Events[] => {
   const { eventColorSwapOffset, notes_list, bpm } = args;
   // Set an event to be at time 0
   let events_list: Events[] = [{ _time: 0, _type: 4, _value: 0 }];
@@ -148,9 +155,9 @@ export const getEventsList = (args: { eventColorSwapOffset: number; notes_list: 
         lastEventColor = color;
         lastEventIntensity = intensity;
       }
-    } catch (error) {
-      console.error(`Lights event writing error: ${JSON.stringify(note, null, 2)}`);
-      console.error(error);
+    } catch (err) {
+      error(`Lights event writing error: ${JSON.stringify(note, null, 2)}`);
+      error(err);
     }
 
     // Rings
@@ -165,9 +172,9 @@ export const getEventsList = (args: { eventColorSwapOffset: number; notes_list: 
         _value: eventValues.Off,
       });
       lastEventRing++;
-    } catch (error) {
-      console.error(`Rings event writing error: ${JSON.stringify(note, null, 2)}`);
-      console.error(error);
+    } catch (err) {
+      error(`Rings event writing error: ${JSON.stringify(note, null, 2)}`);
+      error(err);
     }
 
     // Lasers
@@ -179,9 +186,9 @@ export const getEventsList = (args: { eventColorSwapOffset: number; notes_list: 
           _value: eventValues.Normal[note._type],
         });
       }
-    } catch (error) {
-      console.error(`Lasers event writing error: ${JSON.stringify(note, null, 2)}`);
-      console.error(error);
+    } catch (err) {
+      error(`Lasers event writing error: ${JSON.stringify(note, null, 2)}`);
+      error(err);
     }
   }
   return events_list;
