@@ -6,6 +6,8 @@ artifactName: ${name}-${os}-${arch}-${version}.${ext}
 electronCompile: false
 win:
   target: portable
+linux:
+  target: AppImage
 publish:
   - provider: generic
     url: localhost
