@@ -9,6 +9,7 @@
 
 dist/*.exe
 dist/win-unpacked
+dist/linux-unpacked
 build/scripts/beatmapsynth.exe
 build/scripts/models
 build/scripts/__pycache__
