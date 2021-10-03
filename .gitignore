@@ -8,10 +8,12 @@
 !build/scripts/*.exe
 
 dist/*.exe
+dist/*.AppImage
 dist/win-unpacked
 dist/linux-unpacked
 dist/.icon-ico
 dist/*.yml
+dist/*.yaml
 build/scripts/beatmapsynth.exe
 build/scripts/models
 build/scripts/__pycache__

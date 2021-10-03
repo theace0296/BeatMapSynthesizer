@@ -12,10 +12,11 @@
 	"name": "beat-map-synthesizer",
 	"version": "0.6.2-dev",
 	"scripts": {
-		"build": "tsc --build && echo %npm_package_version% > ./dist/latest.txt",
+		"build": "tsc --build",
 		"prestart": "tsc --build",
 		"start": "electron .",
-		"predist": "tsc --build && echo %npm_package_version% > ./dist/latest.txt",
+    "version": "echo %npm_package_version% > ./dist/latest.txt",
+		"predist": "tsc --build",
 		"dist": "electron-builder -p always",
 		"pack": "electron-builder"
 	},
